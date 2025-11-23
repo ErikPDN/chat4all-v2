@@ -1,0 +1,52 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+      
+      - name: Start Testcontainers
+        run: |
+          # Testcontainers will automatically start required containers
+          # (PostgreSQL, MongoDB, Kafka, Redis) during test execution
+          echo "Testcontainers will be started by test framework"
+      
+      - name: Run integration tests
+        run: mvn verify -Pintegration-tests
+        env:
+          # Testcontainers configuration
+          TESTCONTAINERS_REUSE_ENABLE: true
+          TESTCONTAINERS_RYUK_DISABLED: false
+      
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-reports
+          path: |
+            **/target/surefire-reports/
+            **/target/failsafe-reports/
+      
+      - name: Publish test results
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Integration Test Results
+          path: '**/target/surefire-reports/*.xml'
+          reporter: java-junit

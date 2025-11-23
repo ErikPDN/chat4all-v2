@@ -1,0 +1,441 @@
+openapi: 3.0.3
+info:
+  title: Chat4All Messages API
+  description: |
+    Core messaging API for sending and receiving messages across multiple channels.
+    Supports text messages, file attachments, and status tracking.
+  version: 1.0.0
+  contact:
+    name: Chat4All Platform Team
+    email: platform@chat4all.com
+
+servers:
+  - url: https://api.chat4all.com/v1
+    description: Production
+  - url: https://staging-api.chat4all.com/v1
+    description: Staging
+  - url: http://localhost:8080/v1
+    description: Local Development
+
+security:
+  - OAuth2: [messages:read, messages:write]
+  - ApiKey: []
+
+paths:
+  /messages:
+    post:
+      summary: Send a message
+      description: |
+        Submit a message for delivery to an external channel or internal recipient.
+        Returns HTTP 202 (Accepted) immediately without waiting for delivery confirmation.
+      operationId: sendMessage
+      tags:
+        - Messages
+      security:
+        - OAuth2: [messages:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+            examples:
+              text_message:
+                summary: Simple text message
+                value:
+                  conversation_id: conv-abc123
+                  sender_id: user-550e8400-e29b-41d4-a716-446655440000
+                  content: Hello, how can I help you today?
+                  channel: WHATSAPP
+              file_message:
+                summary: Message with file attachment
+                value:
+                  conversation_id: conv-abc123
+                  sender_id: user-550e8400-e29b-41d4-a716-446655440000
+                  content: Here's your invoice
+                  file_id: file-7d9f6dd0-4f44-4a3d-9e22-8c8f5a3e7b12
+                  channel: WHATSAPP
+      responses:
+        '202':
+          description: Message accepted for delivery
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageAcceptedResponse'
+        '400':
+          description: Invalid request (validation errors)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds until rate limit resets
+    
+    get:
+      summary: List messages
+      description: Retrieve messages with optional filtering by conversation, sender, or status
+      operationId: listMessages
+      tags:
+        - Messages
+      security:
+        - OAuth2: [messages:read]
+      parameters:
+        - name: conversation_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by conversation ID
+        - name: sender_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by sender user ID
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/MessageStatus'
+          description: Filter by message status
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of messages to return
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Pagination offset
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [timestamp_asc, timestamp_desc]
+            default: timestamp_desc
+          description: Sort order
+      responses:
+        '200':
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageListResponse'
+        '401':
+          description: Unauthorized
+
+  /messages/{message_id}:
+    get:
+      summary: Get message details
+      description: Retrieve full details of a specific message
+      operationId: getMessage
+      tags:
+        - Messages
+      security:
+        - OAuth2: [messages:read]
+      parameters:
+        - name: message_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique message identifier
+      responses:
+        '200':
+          description: Message details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '404':
+          description: Message not found
+        '401':
+          description: Unauthorized
+
+  /messages/{message_id}/status:
+    get:
+      summary: Get message delivery status
+      description: Retrieve current delivery status and history
+      operationId: getMessageStatus
+      tags:
+        - Messages
+      security:
+        - OAuth2: [messages:read]
+      parameters:
+        - name: message_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Message status details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageStatusResponse'
+        '404':
+          description: Message not found
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.chat4all.com/oauth/authorize
+          tokenUrl: https://auth.chat4all.com/oauth/token
+          scopes:
+            messages:read: Read messages
+            messages:write: Send messages
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    SendMessageRequest:
+      type: object
+      required:
+        - conversation_id
+        - sender_id
+        - content
+        - channel
+      properties:
+        message_id:
+          type: string
+          format: uuid
+          description: Optional client-provided message ID (UUIDv4). Generated if not provided.
+          example: 550e8400-e29b-41d4-a716-446655440000
+        conversation_id:
+          type: string
+          description: Conversation identifier
+          example: conv-abc123
+          minLength: 1
+          maxLength: 255
+        sender_id:
+          type: string
+          format: uuid
+          description: User ID of the sender
+          example: user-550e8400-e29b-41d4-a716-446655440000
+        content:
+          type: string
+          description: Message text content
+          maxLength: 10000
+          example: Hello, how can I help you?
+        file_id:
+          type: string
+          format: uuid
+          description: Reference to uploaded file (if message contains attachment)
+          example: file-7d9f6dd0-4f44-4a3d-9e22-8c8f5a3e7b12
+        channel:
+          $ref: '#/components/schemas/Channel'
+        metadata:
+          type: object
+          description: Optional platform-specific metadata
+          additionalProperties: true
+
+    MessageAcceptedResponse:
+      type: object
+      required:
+        - message_id
+        - status
+        - timestamp
+      properties:
+        message_id:
+          type: string
+          format: uuid
+          description: Unique message identifier
+          example: 550e8400-e29b-41d4-a716-446655440000
+        status:
+          type: string
+          enum: [PENDING]
+          description: Initial status (always PENDING on acceptance)
+        timestamp:
+          type: string
+          format: date-time
+          description: Message acceptance timestamp (ISO 8601)
+          example: '2025-11-23T10:00:00Z'
+
+    Message:
+      type: object
+      required:
+        - message_id
+        - conversation_id
+        - sender_id
+        - content
+        - channel
+        - status
+        - timestamp
+      properties:
+        message_id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+        sender_id:
+          type: string
+          format: uuid
+        recipient_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: List of recipient user IDs (for group messages)
+        content:
+          type: string
+        content_type:
+          type: string
+          enum: [TEXT, FILE, IMAGE, VIDEO, AUDIO]
+        file_id:
+          type: string
+          format: uuid
+          nullable: true
+        channel:
+          $ref: '#/components/schemas/Channel'
+        status:
+          $ref: '#/components/schemas/MessageStatus'
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    MessageListResponse:
+      type: object
+      required:
+        - messages
+        - pagination
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
+        pagination:
+          type: object
+          required:
+            - total
+            - limit
+            - offset
+          properties:
+            total:
+              type: integer
+              description: Total number of messages matching filter
+            limit:
+              type: integer
+            offset:
+              type: integer
+            has_more:
+              type: boolean
+              description: Whether more results are available
+
+    MessageStatusResponse:
+      type: object
+      required:
+        - message_id
+        - current_status
+        - status_history
+      properties:
+        message_id:
+          type: string
+          format: uuid
+        current_status:
+          $ref: '#/components/schemas/MessageStatus'
+        status_history:
+          type: array
+          items:
+            type: object
+            required:
+              - status
+              - timestamp
+            properties:
+              status:
+                $ref: '#/components/schemas/MessageStatus'
+              timestamp:
+                type: string
+                format: date-time
+              error_message:
+                type: string
+                nullable: true
+        retry_count:
+          type: integer
+          description: Number of delivery retry attempts
+
+    Channel:
+      type: string
+      enum:
+        - WHATSAPP
+        - TELEGRAM
+        - INSTAGRAM
+        - INTERNAL
+      description: Message delivery channel
+
+    MessageStatus:
+      type: string
+      enum:
+        - PENDING
+        - SENT
+        - DELIVERED
+        - READ
+        - FAILED
+      description: |
+        Message delivery status:
+        - PENDING: Accepted by platform, awaiting processing
+        - SENT: Dispatched to external channel
+        - DELIVERED: Confirmed delivery to recipient's device
+        - READ: Recipient has read the message
+        - FAILED: Delivery failed after max retries
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          description: Human-readable error message
+          example: Field 'content' exceeds maximum length of 10000 characters
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              issue:
+                type: string
+          description: Detailed validation errors
+        trace_id:
+          type: string
+          description: Trace ID for debugging (from OpenTelemetry context)

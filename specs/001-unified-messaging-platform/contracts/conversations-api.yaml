@@ -1,0 +1,189 @@
+openapi: 3.0.3
+info:
+  title: Chat4All Conversations API
+  description: Manage conversation threads (1:1 and group)
+  version: 1.0.0
+
+servers:
+  - url: https://api.chat4all.com/v1
+
+security:
+  - OAuth2: [conversations:read, conversations:write]
+
+paths:
+  /conversations:
+    get:
+      summary: List conversations
+      operationId: listConversations
+      tags: [Conversations]
+      parameters:
+        - name: participant_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+    
+    post:
+      summary: Create conversation
+      operationId: createConversation
+      tags: [Conversations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConversationRequest'
+      responses:
+        '201':
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /conversations/{conversation_id}:
+    get:
+      summary: Get conversation details
+      operationId: getConversation
+      tags: [Conversations]
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Conversation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /conversations/{conversation_id}/messages:
+    get:
+      summary: Get conversation message history
+      operationId: getConversationMessages
+      tags: [Conversations]
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: before
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Get messages before this timestamp
+      responses:
+        '200':
+          description: Conversation message history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: './messages-api.yaml#/components/schemas/Message'
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.chat4all.com/oauth/authorize
+          tokenUrl: https://auth.chat4all.com/oauth/token
+          scopes:
+            conversations:read: Read conversations
+            conversations:write: Create/modify conversations
+
+  schemas:
+    CreateConversationRequest:
+      type: object
+      required:
+        - conversation_type
+        - participants
+        - primary_channel
+      properties:
+        conversation_type:
+          type: string
+          enum: ['1:1', 'GROUP']
+        participants:
+          type: array
+          items:
+            type: object
+            required:
+              - user_id
+              - user_type
+            properties:
+              user_id:
+                type: string
+                format: uuid
+              user_type:
+                type: string
+                enum: [AGENT, CUSTOMER]
+        primary_channel:
+          type: string
+          enum: [WHATSAPP, TELEGRAM, INSTAGRAM, INTERNAL]
+
+    Conversation:
+      type: object
+      properties:
+        conversation_id:
+          type: string
+        conversation_type:
+          type: string
+          enum: ['1:1', 'GROUP']
+        participants:
+          type: array
+          items:
+            type: object
+            properties:
+              user_id:
+                type: string
+                format: uuid
+              user_type:
+                type: string
+              joined_at:
+                type: string
+                format: date-time
+        primary_channel:
+          type: string
+        message_count:
+          type: integer
+        last_message_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        archived:
+          type: boolean
