@@ -1,34 +1,36 @@
--- V002__create_external_identities_table.sql
--- Create external_identities table for linking platform accounts (WhatsApp, Telegram, Instagram) to users
+-- V002: Create external_identities table
+-- Purpose: Links internal users to platform-specific accounts (WhatsApp, Telegram, Instagram)
+-- Requirements: FR-033, FR-034
 
+-- Create platform_type ENUM
+CREATE TYPE platform_type_enum AS ENUM ('WHATSAPP', 'TELEGRAM', 'INSTAGRAM');
+
+-- Create external_identities table
 CREATE TABLE external_identities (
-    identity_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL,
-    platform VARCHAR(50) NOT NULL,
+    identity_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    platform platform_type_enum NOT NULL,
     platform_user_id VARCHAR(255) NOT NULL,
-    credentials JSONB DEFAULT '{}'::jsonb,
-    last_synced_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    verified BOOLEAN NOT NULL DEFAULT FALSE,
+    linked_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    metadata JSONB,
     
-    -- Foreign key with CASCADE delete
-    CONSTRAINT fk_external_identities_user 
-        FOREIGN KEY (user_id) 
-        REFERENCES users(user_id) 
-        ON DELETE CASCADE,
-    
-    -- Constraints
-    CONSTRAINT platform_check CHECK (platform IN ('WHATSAPP', 'TELEGRAM', 'INSTAGRAM')),
-    CONSTRAINT unique_platform_user UNIQUE (platform, platform_user_id)
+    -- Prevent duplicate platform accounts
+    CONSTRAINT unique_platform_identity UNIQUE (platform, platform_user_id)
 );
 
--- Indexes
+-- Create indexes for performance
 CREATE INDEX idx_external_identities_user_id ON external_identities(user_id);
 CREATE INDEX idx_external_identities_platform ON external_identities(platform);
-CREATE INDEX idx_external_identities_last_synced ON external_identities(last_synced_at DESC);
+CREATE INDEX idx_external_identities_platform_user ON external_identities(platform, platform_user_id);
 
--- Comments
-COMMENT ON TABLE external_identities IS 'Links users to their external platform accounts (1:N relationship)';
-COMMENT ON COLUMN external_identities.platform_user_id IS 'External platform user identifier (e.g., WhatsApp phone number)';
-COMMENT ON COLUMN external_identities.credentials IS 'Platform-specific credentials (OAuth tokens, API keys)';
-COMMENT ON COLUMN external_identities.last_synced_at IS 'Last time credentials were validated/refreshed';
-COMMENT ON CONSTRAINT unique_platform_user ON external_identities IS 'Prevents duplicate platform accounts (one Instagram account cannot belong to multiple users)';
+-- Add comments for documentation
+COMMENT ON TABLE external_identities IS 'Links internal users to external platform accounts';
+COMMENT ON COLUMN external_identities.identity_id IS 'Unique identifier (UUID) for this identity mapping';
+COMMENT ON COLUMN external_identities.user_id IS 'Reference to internal user profile';
+COMMENT ON COLUMN external_identities.platform IS 'External platform: WHATSAPP, TELEGRAM, or INSTAGRAM';
+COMMENT ON COLUMN external_identities.platform_user_id IS 'Platform-specific user identifier (e.g., +5511999999999 for WhatsApp, @username for Telegram)';
+COMMENT ON COLUMN external_identities.verified IS 'Whether identity verification has been completed (for high-security channels)';
+COMMENT ON COLUMN external_identities.linked_at IS 'Timestamp when identity was linked';
+COMMENT ON COLUMN external_identities.metadata IS 'Additional platform-specific metadata';
+COMMENT ON CONSTRAINT unique_platform_identity ON external_identities IS 'Ensures each platform account can only be linked once';

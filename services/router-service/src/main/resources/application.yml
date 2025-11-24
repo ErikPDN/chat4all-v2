@@ -1,0 +1,119 @@
+spring:
+  application:
+    name: router-service
+  
+  # Autoconfiguration Exclusions
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+  
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: router-service-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.type.mapping: messageEvent:com.chat4all.common.event.MessageEvent
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    listener:
+      ack-mode: manual
+      concurrency: 3
+
+  # MongoDB Configuration (for deduplication checks)
+  # Disabled until needed - using Redis-only deduplication for MVP
+  # data:
+  #   mongodb:
+  #     uri: ${MONGODB_URI:mongodb://chat4all:chat4all_dev_password@localhost:27017/chat4all?authSource=admin}
+  #     database: chat4all
+  #     auto-index-creation: true
+
+  # Redis Configuration (for deduplication cache)
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:chat4all_dev_password}
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8082}
+  shutdown: graceful
+
+# Management & Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus,info
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+# Resilience4j Configuration
+resilience4j:
+  retry:
+    instances:
+      messageDelivery:
+        max-attempts: 3
+        wait-duration: 1s
+        exponential-backoff-multiplier: 2
+        exponential-max-wait-duration: 10s
+        retry-exceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException
+  
+  circuitbreaker:
+    instances:
+      connectorClient:
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.chat4all.router: DEBUG
+    org.springframework.kafka: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# Custom Application Properties
+app:
+  kafka:
+    topics:
+      chat-events: chat-events
+      status-updates: status-updates
+      dlq: chat-events-dlq
+  routing:
+    max-retries: 3
+    retry-delay-ms: 1000
+  deduplication:
+    ttl-days: 7

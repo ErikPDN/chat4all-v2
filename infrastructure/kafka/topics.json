@@ -1,0 +1,102 @@
+{
+  "topics": [
+    {
+      "name": "chat-events",
+      "description": "Main event stream for message lifecycle events (MESSAGE_CREATED, MESSAGE_SENT, MESSAGE_DELIVERED, MESSAGE_READ, MESSAGE_FAILED)",
+      "partitions": 10,
+      "replicationFactor": 3,
+      "config": {
+        "retention.ms": "604800000",
+        "compression.type": "snappy",
+        "min.insync.replicas": "2",
+        "cleanup.policy": "delete",
+        "segment.ms": "86400000",
+        "max.message.bytes": "1048576"
+      },
+      "notes": [
+        "Partitioned by conversation_id to ensure message ordering per conversation",
+        "7-day retention (604800000 ms) for event replay",
+        "Snappy compression for optimal throughput/CPU balance",
+        "min.insync.replicas=2 ensures durability even if one replica is down"
+      ]
+    },
+    {
+      "name": "chat-events-dlq",
+      "description": "Dead Letter Queue for messages that failed processing after max retries",
+      "partitions": 10,
+      "replicationFactor": 3,
+      "config": {
+        "retention.ms": "2592000000",
+        "compression.type": "snappy",
+        "min.insync.replicas": "2",
+        "cleanup.policy": "delete"
+      },
+      "notes": [
+        "30-day retention (2592000000 ms) for manual investigation",
+        "Same partition count as main topic for easier correlation"
+      ]
+    },
+    {
+      "name": "webhook-events",
+      "description": "Events from external platform webhooks (WhatsApp, Telegram, Instagram)",
+      "partitions": 5,
+      "replicationFactor": 3,
+      "config": {
+        "retention.ms": "604800000",
+        "compression.type": "snappy",
+        "min.insync.replicas": "2",
+        "cleanup.policy": "delete"
+      },
+      "notes": [
+        "Fewer partitions than chat-events as webhook volume is lower",
+        "7-day retention for webhook replay and debugging"
+      ]
+    },
+    {
+      "name": "delivery-status",
+      "description": "Status updates for message delivery (sent, delivered, read acknowledgments)",
+      "partitions": 5,
+      "replicationFactor": 3,
+      "config": {
+        "retention.ms": "604800000",
+        "compression.type": "snappy",
+        "min.insync.replicas": "2",
+        "cleanup.policy": "delete"
+      },
+      "notes": [
+        "7-day retention for status tracking and analytics",
+        "Lower partition count as status updates are less frequent than messages"
+      ]
+    },
+    {
+      "name": "audit-events",
+      "description": "Audit trail for identity operations and configuration changes (CREATE, UPDATE, DELETE, LINK, UNLINK)",
+      "partitions": 3,
+      "replicationFactor": 3,
+      "config": {
+        "retention.ms": "15552000000",
+        "compression.type": "gzip",
+        "min.insync.replicas": "2",
+        "cleanup.policy": "delete"
+      },
+      "notes": [
+        "180-day retention (15552000000 ms) for compliance (FR-035)",
+        "GZIP compression for audit data (optimize for storage over CPU)",
+        "Fewer partitions as audit volume is low",
+        "Long-term audit data stored in PostgreSQL (7 years), this is for real-time streaming"
+      ]
+    }
+  ],
+  "usage": {
+    "create_topics": "Use this file with kafka-topics.sh or Kafka Admin API to create topics",
+    "example_command": "kafka-topics.sh --bootstrap-server localhost:9092 --create --topic chat-events --partitions 10 --replication-factor 3 --config retention.ms=604800000 --config compression.type=snappy",
+    "automation": "In production, use Terraform or Kubernetes Operators to manage topics declaratively"
+  },
+  "production_notes": [
+    "Adjust partition count based on expected throughput (10k msgs/sec ≈ 1 partition per 1k msgs/sec)",
+    "Set replication.factor=3 for high availability across 3 availability zones",
+    "Monitor lag metrics in Grafana to detect consumer bottlenecks",
+    "Use ISR (In-Sync Replicas) monitoring to ensure min.insync.replicas is met",
+    "Consider increasing retention.ms for critical topics in regulated industries"
+  ]
+}

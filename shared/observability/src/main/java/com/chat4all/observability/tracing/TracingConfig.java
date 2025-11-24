@@ -5,238 +5,160 @@ import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.propagation.ContextPropagators;
+import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.samplers.Sampler;
+import io.opentelemetry.semconv.ResourceAttributes;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import reactor.core.publisher.Mono;
 
-import java.util.function.Function;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 /**
- * TracingConfig
  * OpenTelemetry configuration for distributed tracing
  * 
- * Aligned with:
- * - Constitutional Principle VI: Full-stack observability (NON-NEGOTIABLE)
- * - FR-038: Distributed tracing with OpenTelemetry
- * - Task T020
- * 
- * Features:
- * - W3C Trace Context propagation (standard across microservices)
+ * Configures:
  * - OTLP gRPC exporter to Jaeger/Tempo backend
- * - Automatic instrumentation via OpenTelemetry Java Agent (runtime)
- * - Manual instrumentation support for custom spans
- * - Configurable sampling rate (default: 100% for dev, 10% for prod)
+ * - W3C Trace Context propagation (industry standard)
+ * - Service resource attributes (name, version, environment)
+ * - Sampling strategy (100% dev, 10% prod for cost optimization)
  * - Batch span processing for performance
  * 
- * Architecture:
+ * Aligned with:
+ * - Task T020
+ * - Constitutional Principle VI (Full-Stack Observability)
+ * - FR-038: Distributed tracing requirement
+ * - Research: Observability stack (Jaeger/Tempo integration)
  * 
- * Service A (message-service)           Service B (router-service)
- *     |                                      |
- *     | HTTP request with traceparent        | Kafka message with traceparent
- *     | header (W3C Trace Context)           | header (W3C Trace Context)
- *     v                                      v
- * [OpenTelemetry SDK]                   [OpenTelemetry SDK]
- *     |                                      |
- *     +-------> OTLP Exporter ---------------+
- *                    |
- *                    v
- *             [Jaeger Collector]
- *                    |
- *                    v
- *            [Jaeger Query UI]
+ * Context Propagation:
+ * - Uses W3C Trace Context standard (traceparent/tracestate headers)
+ * - Propagates across HTTP, Kafka, and gRPC boundaries
+ * - MDC integration for trace_id and span_id in logs
  * 
- * Environment variables (set in Kubernetes deployment):
- * - OTEL_SERVICE_NAME: Service name (e.g., "message-service")
- * - OTEL_EXPORTER_OTLP_ENDPOINT: Jaeger OTLP endpoint (e.g., "http://jaeger:4317")
- * - OTEL_TRACES_SAMPLER: Sampling strategy (always_on, always_off, traceidratio)
- * - OTEL_TRACES_SAMPLER_ARG: Sampling rate (0.0 to 1.0 for traceidratio)
- * 
- * Usage in application code:
+ * Usage:
  * <pre>
- * {@code
- * @Service
- * public class MessageService {
- *     private final Tracer tracer;
- *     
- *     public Mono<Message> processMessage(MessageDTO dto) {
- *         Span span = tracer.spanBuilder("processMessage")
- *             .setAttribute("message.id", dto.messageId())
- *             .setAttribute("conversation.id", dto.conversationId())
- *             .startSpan();
- *         
- *         return Mono.defer(() -> doProcessMessage(dto))
- *             .doFinally(signal -> span.end());
- *     }
- * }
+ * @Autowired
+ * private Tracer tracer;
+ * 
+ * Span span = tracer.spanBuilder("operation-name").startSpan();
+ * try (Scope scope = span.makeCurrent()) {
+ *     // Your code here
+ * } finally {
+ *     span.end();
  * }
  * </pre>
- * 
- * Jaeger UI query examples:
- * - All traces for service: service="message-service"
- * - Slow requests: duration>5s service="message-service"
- * - Errors: error=true service="router-service"
- * - Specific conversation: tags.conversation_id="conv-123"
  */
 @Slf4j
 @Configuration
 public class TracingConfig {
 
-    @Value("${spring.application.name:chat4all-service}")
+    @Value("${spring.application.name:unknown-service}")
     private String serviceName;
 
-    @Value("${otel.traces.sampler.arg:1.0}")
-    private double samplingRate;
+    @Value("${otel.exporter.otlp.endpoint:http://localhost:4317}")
+    private String otlpEndpoint;
+
+    @Value("${otel.traces.sampler.probability:1.0}")
+    private double samplingProbability;
+
+    @Value("${spring.profiles.active:dev}")
+    private String activeProfile;
+
+    @Value("${otel.service.version:1.0.0-SNAPSHOT}")
+    private String serviceVersion;
 
     /**
-     * Create OpenTelemetry SDK instance
+     * Configure OpenTelemetry SDK with OTLP exporter and W3C propagation
      * 
-     * Note: This is a minimal configuration. For production use with Jaeger/Tempo,
-     * applications should configure the OpenTelemetry Java Agent at runtime with:
-     * -javaagent:/path/to/opentelemetry-javaagent.jar
-     * -Dotel.service.name=message-service
-     * -Dotel.exporter.otlp.endpoint=http://jaeger:4317
-     * 
-     * @return configured OpenTelemetry instance
+     * @return Configured OpenTelemetry instance
      */
     @Bean
     public OpenTelemetry openTelemetry() {
-        log.info("Initializing OpenTelemetry tracing for service: {}", serviceName);
-        log.info("Trace sampling rate: {}%", samplingRate * 100);
+        log.info("Initializing OpenTelemetry: service={}, endpoint={}, sampling={}", 
+            serviceName, otlpEndpoint, samplingProbability);
 
-        // Create resource with service name
+        // Service resource attributes for identification
+        @SuppressWarnings("deprecation")
         Resource resource = Resource.getDefault()
             .merge(Resource.create(Attributes.builder()
-                .put("service.name", serviceName)
-                .put("service.version", "1.0.0-SNAPSHOT")
-                .put("deployment.environment", getEnvironment())
+                .put(ResourceAttributes.SERVICE_NAME, serviceName)
+                .put(ResourceAttributes.SERVICE_VERSION, serviceVersion)
+                .put(ResourceAttributes.DEPLOYMENT_ENVIRONMENT, activeProfile)
+                .put(ResourceAttributes.SERVICE_NAMESPACE, "chat4all")
                 .build()));
 
-        // Create tracer provider with sampling (no exporter - use Java Agent)
-        SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
-            .setResource(resource)
-            .setSampler(createSampler())
+        // OTLP gRPC span exporter
+        OtlpGrpcSpanExporter spanExporter = OtlpGrpcSpanExporter.builder()
+            .setEndpoint(otlpEndpoint)
+            .setTimeout(Duration.ofSeconds(10))
             .build();
 
-        // Create OpenTelemetry SDK with W3C Trace Context propagation
-        OpenTelemetrySdk openTelemetry = OpenTelemetrySdk.builder()
+        // Batch span processor for performance (batches spans before export)
+        BatchSpanProcessor batchSpanProcessor = BatchSpanProcessor.builder(spanExporter)
+            .setMaxQueueSize(2048) // Max spans in queue
+            .setMaxExportBatchSize(512) // Max spans per batch
+            .setScheduleDelay(Duration.ofSeconds(5)) // Export every 5s
+            .setExporterTimeout(Duration.ofSeconds(30)) // Timeout for export
+            .build();
+
+        // Sampler configuration based on environment
+        Sampler sampler;
+        if ("prod".equalsIgnoreCase(activeProfile) || "production".equalsIgnoreCase(activeProfile)) {
+            // Production: sample 10% of traces for cost optimization
+            sampler = Sampler.traceIdRatioBased(0.1);
+            log.info("Production mode: Using 10% trace sampling");
+        } else {
+            // Development/Staging: sample all traces for debugging
+            sampler = Sampler.traceIdRatioBased(samplingProbability);
+            log.info("Development mode: Using {}% trace sampling", samplingProbability * 100);
+        }
+
+        // Tracer provider with resource, processor, and sampler
+        SdkTracerProvider tracerProvider = SdkTracerProvider.builder()
+            .setResource(resource)
+            .addSpanProcessor(batchSpanProcessor)
+            .setSampler(sampler)
+            .build();
+
+        // OpenTelemetry SDK with W3C Trace Context propagation
+        OpenTelemetry openTelemetry = OpenTelemetrySdk.builder()
             .setTracerProvider(tracerProvider)
-            .setPropagators(ContextPropagators.create(W3CTraceContextPropagator.getInstance()))
+            .setPropagators(ContextPropagators.create(
+                W3CTraceContextPropagator.getInstance() // Standard traceparent/tracestate headers
+            ))
             .buildAndRegisterGlobal();
 
-        // Add shutdown hook to flush spans on JVM exit
+        // Shutdown hook for graceful cleanup
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            log.info("Shutting down OpenTelemetry tracing...");
-            tracerProvider.close();
-            log.info("OpenTelemetry tracing shut down successfully");
+            log.info("Shutting down OpenTelemetry SDK");
+            tracerProvider.shutdown();
+            spanExporter.shutdown();
+            log.info("OpenTelemetry SDK shutdown complete");
         }));
 
-        log.info("OpenTelemetry tracing initialized successfully");
-        log.info("For full observability, run with OpenTelemetry Java Agent");
+        log.info("OpenTelemetry initialized successfully with W3C Trace Context propagation");
         return openTelemetry;
     }
 
     /**
-     * Create Tracer bean for manual instrumentation
+     * Provide Tracer bean for manual instrumentation
      * 
      * @param openTelemetry OpenTelemetry instance
-     * @return Tracer for creating custom spans
+     * @return Tracer for creating spans
      */
     @Bean
     public Tracer tracer(OpenTelemetry openTelemetry) {
-        return openTelemetry.getTracer(serviceName, "1.0.0-SNAPSHOT");
-    }
-
-    /**
-     * Create sampler based on configuration
-     * 
-     * Sampling strategies:
-     * - 1.0 (100%): Sample all traces (dev/staging)
-     * - 0.1 (10%): Sample 10% of traces (production)
-     * - 0.0 (0%): Disable tracing (emergency override)
-     * 
-     * @return configured Sampler
-     */
-    private Sampler createSampler() {
-        if (samplingRate >= 1.0) {
-            log.info("Using AlwaysOn sampler (100% of traces)");
-            return Sampler.alwaysOn();
-        } else if (samplingRate <= 0.0) {
-            log.warn("Using AlwaysOff sampler (0% of traces) - tracing disabled");
-            return Sampler.alwaysOff();
-        } else {
-            log.info("Using TraceIdRatioBased sampler ({}% of traces)", samplingRate * 100);
-            return Sampler.traceIdRatioBased(samplingRate);
-        }
-    }
-
-    /**
-     * Detect deployment environment from system properties
-     * 
-     * @return environment name (dev, staging, production)
-     */
-    private String getEnvironment() {
-        String env = System.getenv("DEPLOYMENT_ENV");
-        if (env != null && !env.isEmpty()) {
-            return env;
-        }
-        
-        // Fallback to Spring profile
-        String springProfile = System.getProperty("spring.profiles.active");
-        if (springProfile != null && !springProfile.isEmpty()) {
-            return springProfile;
-        }
-        
-        return "dev";
-    }
-
-    /**
-     * Helper class for trace context propagation in reactive code
-     * 
-     * Usage:
-     * <pre>
-     * {@code
-     * public Mono<Message> processMessage(MessageDTO dto) {
-     *     return TracingContext.withSpan(tracer, "processMessage", span -> {
-     *         span.setAttribute("message.id", dto.messageId());
-     *         return doProcessMessage(dto);
-     *     });
-     * }
-     * }
-     * </pre>
-     */
-    public static class TracingContext {
-        
-        /**
-         * Execute reactive operation with custom span
-         * 
-         * @param tracer Tracer instance
-         * @param spanName span name
-         * @param operation reactive operation to execute
-         * @param <T> return type
-         * @return Mono with tracing context
-         */
-        public static <T> Mono<T> withSpan(
-                Tracer tracer, 
-                String spanName, 
-                Function<io.opentelemetry.api.trace.Span, Mono<T>> operation) {
-            
-            return Mono.defer(() -> {
-                io.opentelemetry.api.trace.Span span = tracer.spanBuilder(spanName).startSpan();
-                
-                return operation.apply(span)
-                    .doOnSuccess(result -> span.end())
-                    .doOnError(error -> {
-                        span.recordException(error);
-                        span.end();
-                    })
-                    .doOnCancel(span::end);
-            });
-        }
+        Tracer tracer = openTelemetry.getTracer(
+            serviceName, 
+            serviceVersion
+        );
+        log.info("Tracer created for service: {} version: {}", serviceName, serviceVersion);
+        return tracer;
     }
 }

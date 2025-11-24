@@ -2,421 +2,340 @@ package com.chat4all.observability.metrics;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * MessageMetrics
- * Custom Micrometer metrics for message throughput, latency, and error rates
+ * Custom Micrometer metrics for message processing
+ * 
+ * Provides metrics for:
+ * - Message throughput (messages sent/received per second)
+ * - Message delivery latency (P50, P95, P99)
+ * - Error rates (failed deliveries, retries)
+ * - Connector health (circuit breaker state)
+ * - Conversation metrics (active count, message count)
  * 
  * Aligned with:
- * - Constitutional Principle VI: Full-stack observability (NON-NEGOTIABLE)
- * - FR-037: Custom metrics for business KPIs
- * - FR-040: Latency threshold alerting (<5s message delivery)
- * - SC-001: API response time <500ms (P95)
- * - SC-002: Message delivery <5s (P95)
  * - Task T019
+ * - Constitutional Principle VI (Full-Stack Observability)
+ * - FR-037: Prometheus metrics requirement
+ * - FR-040: Latency alerting requirement (<200ms P95)
  * 
  * Metrics exported:
- * 
- * Counters:
- * - chat4all.message.send.count (tags: channel, status)
- * - chat4all.message.receive.count (tags: channel)
- * - chat4all.message.route.count (tags: channel, target_connector)
- * - chat4all.message.retry.count (tags: channel, attempt)
- * - chat4all.message.error.count (tags: channel, error_type)
- * 
- * Timers:
- * - chat4all.message.send.latency (tags: channel)
- * - chat4all.message.delivery.latency (tags: channel)
- * - chat4all.message.route.latency (tags: channel)
- * - chat4all.api.response.time (tags: endpoint, method)
- * 
- * Usage:
- * <pre>
- * {@code
- * @Service
- * public class MessageService {
- *     private final MessageMetrics metrics;
- *     
- *     public Mono<DeliveryResult> sendMessage(OutboundMessage msg) {
- *         return Mono.defer(() -> {
- *             Timer.Sample sample = metrics.startSendTimer();
- *             
- *             return doSendMessage(msg)
- *                 .doOnSuccess(result -> {
- *                     metrics.recordSendSuccess(msg.channel());
- *                     metrics.recordSendLatency(sample, msg.channel());
- *                 })
- *                 .doOnError(error -> {
- *                     metrics.recordSendError(msg.channel(), error.getClass().getSimpleName());
- *                 });
- *         });
- *     }
- * }
- * }
- * </pre>
- * 
- * Prometheus query examples:
- * - Message send rate: rate(chat4all_message_send_count_total[5m])
- * - P95 delivery latency: histogram_quantile(0.95, chat4all_message_delivery_latency_seconds)
- * - Error rate: rate(chat4all_message_error_count_total[5m])
+ * - messages.sent.total{channel}
+ * - messages.received.total{channel}
+ * - messages.failed.total{channel, error_type}
+ * - messages.retried.total{channel, attempt}
+ * - messages.acceptance.latency (percentiles: 0.5, 0.95, 0.99)
+ * - messages.delivery.latency{channel} (percentiles: 0.5, 0.95, 0.99)
+ * - messages.routing.latency
+ * - webhooks.processing.latency{channel}
+ * - conversations.active.count
+ * - connector.health{channel}
  */
 @Slf4j
 @Component
 public class MessageMetrics {
 
-    private final MeterRegistry registry;
+    private final MeterRegistry meterRegistry;
+    
+    // Message throughput counters
+    private final Counter messagesSentCounter;
+    private final Counter messagesReceivedCounter;
+    private final Counter messagesFailedCounter;
+    private final Counter messagesRetriedCounter;
+    
+    // Latency timers
+    private final Timer messageAcceptanceLatency;
+    private final Timer messageDeliveryLatency;
+    private final Timer messageRoutingLatency;
+    private final Timer webhookProcessingLatency;
 
-    // Metric name prefixes
-    private static final String METRIC_PREFIX = "chat4all.message";
-    private static final String API_PREFIX = "chat4all.api";
-
-    // Tag keys
-    private static final String TAG_CHANNEL = "channel";
-    private static final String TAG_STATUS = "status";
-    private static final String TAG_ERROR_TYPE = "error_type";
-    private static final String TAG_ATTEMPT = "attempt";
-    private static final String TAG_CONNECTOR = "target_connector";
-    private static final String TAG_ENDPOINT = "endpoint";
-    private static final String TAG_METHOD = "method";
-
-    public MessageMetrics(MeterRegistry registry) {
-        this.registry = registry;
-        log.info("MessageMetrics initialized with registry: {}", registry.getClass().getSimpleName());
-    }
-
-    // ========================================================================
-    // Message Send Metrics
-    // ========================================================================
-
-    /**
-     * Start timer for message send operation
-     * 
-     * @return Timer.Sample to be stopped later
-     */
-    public Timer.Sample startSendTimer() {
-        return Timer.start(registry);
-    }
-
-    /**
-     * Record successful message send
-     * 
-     * @param channel channel name (WHATSAPP, TELEGRAM, INSTAGRAM)
-     */
-    public void recordSendSuccess(String channel) {
-        Counter.builder(METRIC_PREFIX + ".send.count")
-            .tag(TAG_CHANNEL, channel)
-            .tag(TAG_STATUS, "success")
-            .description("Total number of messages sent")
-            .register(registry)
-            .increment();
-    }
-
-    /**
-     * Record failed message send
-     * 
-     * @param channel channel name
-     * @param errorType error type/class name
-     */
-    public void recordSendError(String channel, String errorType) {
-        Counter.builder(METRIC_PREFIX + ".error.count")
-            .tag(TAG_CHANNEL, channel)
-            .tag(TAG_ERROR_TYPE, errorType)
-            .tag("operation", "send")
-            .description("Total number of message send errors")
-            .register(registry)
-            .increment();
-    }
-
-    /**
-     * Record message send latency
-     * 
-     * @param sample timer sample started earlier
-     * @param channel channel name
-     */
-    public void recordSendLatency(Timer.Sample sample, String channel) {
-        sample.stop(Timer.builder(METRIC_PREFIX + ".send.latency")
-            .tag(TAG_CHANNEL, channel)
-            .description("Message send latency (API call to external platform)")
+    public MessageMetrics(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        
+        // Initialize counters with base tags
+        this.messagesSentCounter = Counter.builder("messages.sent.total")
+            .description("Total number of messages sent to external platforms")
+            .tag("type", "outbound")
+            .register(meterRegistry);
+        
+        this.messagesReceivedCounter = Counter.builder("messages.received.total")
+            .description("Total number of messages received from external platforms")
+            .tag("type", "inbound")
+            .register(meterRegistry);
+        
+        this.messagesFailedCounter = Counter.builder("messages.failed.total")
+            .description("Total number of failed message deliveries")
+            .tag("type", "error")
+            .register(meterRegistry);
+        
+        this.messagesRetriedCounter = Counter.builder("messages.retried.total")
+            .description("Total number of message delivery retry attempts")
+            .tag("type", "retry")
+            .register(meterRegistry);
+        
+        // Initialize timers with percentiles and SLA boundaries
+        this.messageAcceptanceLatency = Timer.builder("messages.acceptance.latency")
+            .description("Time to accept message and return 202 response (API → MongoDB → Kafka)")
             .publishPercentiles(0.5, 0.95, 0.99)
             .publishPercentileHistogram()
-            .minimumExpectedValue(Duration.ofMillis(10))
-            .maximumExpectedValue(Duration.ofSeconds(10))
-            .register(registry));
+            .sla(Duration.ofMillis(50)) // Constitutional Principle V: <50ms for sync operations
+            .register(meterRegistry);
+        
+        this.messageDeliveryLatency = Timer.builder("messages.delivery.latency")
+            .description("End-to-end time from message acceptance to delivery confirmation")
+            .publishPercentiles(0.5, 0.95, 0.99)
+            .publishPercentileHistogram()
+            .sla(
+                Duration.ofMillis(200),  // Constitutional Principle V: <200ms P95
+                Duration.ofSeconds(1),
+                Duration.ofSeconds(5)    // FR-040: Alert threshold
+            )
+            .register(meterRegistry);
+        
+        this.messageRoutingLatency = Timer.builder("messages.routing.latency")
+            .description("Time to route message from Kafka consumer to connector delivery")
+            .publishPercentiles(0.5, 0.95, 0.99)
+            .publishPercentileHistogram()
+            .register(meterRegistry);
+        
+        this.webhookProcessingLatency = Timer.builder("webhooks.processing.latency")
+            .description("Time to process incoming webhook from external platform")
+            .publishPercentiles(0.5, 0.95, 0.99)
+            .publishPercentileHistogram()
+            .sla(Duration.ofMillis(100)) // Fast webhook acknowledgment
+            .register(meterRegistry);
+        
+        log.info("MessageMetrics initialized with Micrometer registry: {}",
+            meterRegistry.getClass().getSimpleName());
     }
 
-    // ========================================================================
-    // Message Receive Metrics
-    // ========================================================================
+    // ============================================================================
+    // Throughput Metrics
+    // ============================================================================
 
     /**
-     * Record message received from external platform
+     * Record a message sent event
      * 
-     * @param channel channel name
+     * @param channel Channel name (WHATSAPP, TELEGRAM, INSTAGRAM, INTERNAL)
+     */
+    public void recordMessageSent(String channel) {
+        messagesSentCounter.increment();
+        meterRegistry.counter("messages.sent.by_channel", "channel", channel).increment();
+        log.debug("Recorded message sent: channel={}", channel);
+    }
+
+    /**
+     * Record a message received event
+     * 
+     * @param channel Channel name
      */
     public void recordMessageReceived(String channel) {
-        Counter.builder(METRIC_PREFIX + ".receive.count")
-            .tag(TAG_CHANNEL, channel)
-            .description("Total number of messages received from external platforms")
-            .register(registry)
+        messagesReceivedCounter.increment();
+        meterRegistry.counter("messages.received.by_channel", "channel", channel).increment();
+        log.debug("Recorded message received: channel={}", channel);
+    }
+
+    /**
+     * Record a message delivery failure
+     * 
+     * @param channel Channel name
+     * @param errorType Error category (TIMEOUT, API_ERROR, VALIDATION_ERROR, etc.)
+     */
+    public void recordMessageFailed(String channel, String errorType) {
+        messagesFailedCounter.increment();
+        meterRegistry.counter("messages.failed.by_channel", 
+            "channel", channel, 
+            "error_type", errorType)
             .increment();
-    }
-
-    // ========================================================================
-    // Message Routing Metrics
-    // ========================================================================
-
-    /**
-     * Start timer for message routing operation
-     * 
-     * @return Timer.Sample to be stopped later
-     */
-    public Timer.Sample startRouteTimer() {
-        return Timer.start(registry);
+        log.warn("Recorded message failure: channel={}, errorType={}", channel, errorType);
     }
 
     /**
-     * Record successful message routing
+     * Record a message retry attempt
      * 
-     * @param channel source channel
-     * @param targetConnector target connector name
+     * @param channel Channel name
+     * @param attemptNumber Current retry attempt (1, 2, 3)
      */
-    public void recordRouteSuccess(String channel, String targetConnector) {
-        Counter.builder(METRIC_PREFIX + ".route.count")
-            .tag(TAG_CHANNEL, channel)
-            .tag(TAG_CONNECTOR, targetConnector)
-            .tag(TAG_STATUS, "success")
-            .description("Total number of messages routed to connectors")
-            .register(registry)
+    public void recordMessageRetry(String channel, int attemptNumber) {
+        messagesRetriedCounter.increment();
+        meterRegistry.counter("messages.retried.by_channel", 
+            "channel", channel, 
+            "attempt", String.valueOf(attemptNumber))
             .increment();
+        log.debug("Recorded message retry: channel={}, attempt={}", channel, attemptNumber);
     }
 
+    // ============================================================================
+    // Latency Metrics
+    // ============================================================================
+
     /**
-     * Record message routing latency
+     * Record message acceptance latency (API → MongoDB → Kafka)
      * 
-     * @param sample timer sample started earlier
-     * @param channel channel name
+     * @param durationMs Duration in milliseconds
      */
-    public void recordRouteLatency(Timer.Sample sample, String channel) {
-        sample.stop(Timer.builder(METRIC_PREFIX + ".route.latency")
-            .tag(TAG_CHANNEL, channel)
-            .description("Message routing latency (Kafka consume to connector delivery)")
-            .publishPercentiles(0.5, 0.95, 0.99)
-            .publishPercentileHistogram()
-            .minimumExpectedValue(Duration.ofMillis(10))
-            .maximumExpectedValue(Duration.ofSeconds(10))
-            .register(registry));
+    public void recordAcceptanceLatency(long durationMs) {
+        messageAcceptanceLatency.record(durationMs, TimeUnit.MILLISECONDS);
+        
+        // Alert if exceeding 50ms threshold (Constitutional Principle V)
+        if (durationMs > 50) {
+            log.warn("Message acceptance latency exceeded 50ms threshold: {}ms", durationMs);
+        }
+        
+        log.debug("Recorded acceptance latency: {}ms", durationMs);
     }
 
-    // ========================================================================
-    // Message Delivery Metrics (End-to-End)
-    // ========================================================================
-
     /**
-     * Start timer for end-to-end message delivery
+     * Record message delivery latency (acceptance → external platform confirmation)
      * 
-     * @return Timer.Sample to be stopped later
+     * @param durationMs Duration in milliseconds
+     * @param channel Channel name
      */
-    public Timer.Sample startDeliveryTimer() {
-        return Timer.start(registry);
+    public void recordDeliveryLatency(long durationMs, String channel) {
+        messageDeliveryLatency.record(durationMs, TimeUnit.MILLISECONDS);
+        
+        // Per-channel delivery latency
+        Timer.builder("messages.delivery.latency.by_channel")
+            .tag("channel", channel)
+            .publishPercentiles(0.95)
+            .register(meterRegistry)
+            .record(durationMs, TimeUnit.MILLISECONDS);
+        
+        // Alert threshold check (FR-040: >5s triggers alert)
+        if (durationMs > 5000) {
+            log.error("Message delivery latency exceeded 5s alert threshold: {}ms, channel={}", 
+                durationMs, channel);
+        } else if (durationMs > 200) {
+            // Warn if exceeding P95 target (Constitutional Principle V)
+            log.warn("Message delivery latency exceeded 200ms P95 target: {}ms, channel={}", 
+                durationMs, channel);
+        }
+        
+        log.debug("Recorded delivery latency: {}ms, channel={}", durationMs, channel);
     }
 
     /**
-     * Record end-to-end message delivery latency
-     * Measured from message acceptance (POST /messages) to external platform confirmation
+     * Record message routing latency (Kafka consumer → connector delivery)
      * 
-     * Constitutional requirement: <5s (P95) per FR-040
-     * 
-     * @param sample timer sample started earlier
-     * @param channel channel name
+     * @param durationMs Duration in milliseconds
      */
-    public void recordDeliveryLatency(Timer.Sample sample, String channel) {
-        sample.stop(Timer.builder(METRIC_PREFIX + ".delivery.latency")
-            .tag(TAG_CHANNEL, channel)
-            .description("End-to-end message delivery latency (API to external confirmation)")
-            .publishPercentiles(0.5, 0.95, 0.99)
-            .publishPercentileHistogram()
-            .minimumExpectedValue(Duration.ofMillis(100))
-            .maximumExpectedValue(Duration.ofSeconds(30))
-            .register(registry));
+    public void recordRoutingLatency(long durationMs) {
+        messageRoutingLatency.record(durationMs, TimeUnit.MILLISECONDS);
+        log.debug("Recorded routing latency: {}ms", durationMs);
     }
 
     /**
-     * Record delivery latency from duration
+     * Record webhook processing latency
      * 
-     * @param duration delivery duration
-     * @param channel channel name
+     * @param durationMs Duration in milliseconds
+     * @param channel Channel name
      */
-    public void recordDeliveryLatency(Duration duration, String channel) {
-        Timer.builder(METRIC_PREFIX + ".delivery.latency")
-            .tag(TAG_CHANNEL, channel)
-            .description("End-to-end message delivery latency")
-            .publishPercentiles(0.5, 0.95, 0.99)
-            .publishPercentileHistogram()
-            .register(registry)
-            .record(duration);
+    public void recordWebhookProcessingLatency(long durationMs, String channel) {
+        webhookProcessingLatency.record(durationMs, TimeUnit.MILLISECONDS);
+        
+        // Per-channel webhook processing latency
+        Timer.builder("webhooks.processing.latency.by_channel")
+            .tag("channel", channel)
+            .register(meterRegistry)
+            .record(durationMs, TimeUnit.MILLISECONDS);
+        
+        log.debug("Recorded webhook processing latency: {}ms, channel={}", durationMs, channel);
     }
 
-    // ========================================================================
-    // Retry Metrics
-    // ========================================================================
+    // ============================================================================
+    // Gauge Metrics (State)
+    // ============================================================================
 
     /**
-     * Record message retry attempt
+     * Record active conversations count
      * 
-     * @param channel channel name
-     * @param attemptNumber retry attempt number (1, 2, 3)
-     */
-    public void recordRetryAttempt(String channel, int attemptNumber) {
-        Counter.builder(METRIC_PREFIX + ".retry.count")
-            .tag(TAG_CHANNEL, channel)
-            .tag(TAG_ATTEMPT, String.valueOf(attemptNumber))
-            .description("Total number of message delivery retry attempts")
-            .register(registry)
-            .increment();
-    }
-
-    /**
-     * Record message sent to dead letter queue (after all retries exhausted)
-     * 
-     * @param channel channel name
-     * @param errorType final error type
-     */
-    public void recordDeadLetter(String channel, String errorType) {
-        Counter.builder(METRIC_PREFIX + ".deadletter.count")
-            .tag(TAG_CHANNEL, channel)
-            .tag(TAG_ERROR_TYPE, errorType)
-            .description("Total number of messages sent to dead letter queue")
-            .register(registry)
-            .increment();
-    }
-
-    // ========================================================================
-    // API Metrics
-    // ========================================================================
-
-    /**
-     * Start timer for API request
-     * 
-     * @return Timer.Sample to be stopped later
-     */
-    public Timer.Sample startApiTimer() {
-        return Timer.start(registry);
-    }
-
-    /**
-     * Record API response time
-     * 
-     * Constitutional requirement: <500ms (P95) per SC-001
-     * 
-     * @param sample timer sample started earlier
-     * @param endpoint API endpoint (e.g., "/messages", "/conversations/{id}")
-     * @param method HTTP method (GET, POST, PUT, DELETE)
-     * @param statusCode HTTP status code
-     */
-    public void recordApiResponseTime(Timer.Sample sample, String endpoint, String method, int statusCode) {
-        sample.stop(Timer.builder(API_PREFIX + ".response.time")
-            .tag(TAG_ENDPOINT, endpoint)
-            .tag(TAG_METHOD, method)
-            .tag("status", String.valueOf(statusCode))
-            .description("API response time")
-            .publishPercentiles(0.5, 0.95, 0.99)
-            .publishPercentileHistogram()
-            .minimumExpectedValue(Duration.ofMillis(1))
-            .maximumExpectedValue(Duration.ofSeconds(5))
-            .register(registry));
-    }
-
-    /**
-     * Record API request count
-     * 
-     * @param endpoint API endpoint
-     * @param method HTTP method
-     * @param statusCode HTTP status code
-     */
-    public void recordApiRequest(String endpoint, String method, int statusCode) {
-        Counter.builder(API_PREFIX + ".request.count")
-            .tag(TAG_ENDPOINT, endpoint)
-            .tag(TAG_METHOD, method)
-            .tag("status", String.valueOf(statusCode))
-            .description("Total number of API requests")
-            .register(registry)
-            .increment();
-    }
-
-    // ========================================================================
-    // Business Metrics
-    // ========================================================================
-
-    /**
-     * Record active conversation count (gauge)
-     * 
-     * @param count current number of active conversations
+     * @param count Current number of active conversations
      */
     public void recordActiveConversations(long count) {
-        registry.gauge(METRIC_PREFIX + ".conversations.active", count);
+        meterRegistry.gauge("conversations.active.count", count);
+        log.debug("Recorded active conversations: {}", count);
     }
 
     /**
-     * Record message throughput (messages per second)
-     * This is calculated from counters by Prometheus
+     * Record active conversations by channel
      * 
-     * Query: rate(chat4all_message_send_count_total[1m])
+     * @param channel Channel name
+     * @param count Conversation count for this channel
      */
-    public void recordThroughput(String channel, long messagesProcessed) {
-        Counter.builder(METRIC_PREFIX + ".throughput")
-            .tag(TAG_CHANNEL, channel)
-            .description("Message throughput counter (use rate() in Prometheus)")
-            .register(registry)
-            .increment(messagesProcessed);
+    public void recordActiveConversationsByChannel(String channel, long count) {
+        meterRegistry.gauge("conversations.active.by_channel", 
+            java.util.Collections.singletonList(io.micrometer.core.instrument.Tag.of("channel", channel)),
+            count);
     }
 
     /**
-     * Record file upload size
+     * Record connector health status
      * 
-     * @param sizeBytes file size in bytes
-     * @param mimeType file MIME type
+     * @param channel Channel name
+     * @param isHealthy Health status (true = healthy, false = unhealthy)
      */
-    public void recordFileUpload(long sizeBytes, String mimeType) {
-        Counter.builder(METRIC_PREFIX + ".file.upload.count")
-            .tag("mime_type", mimeType)
-            .description("Total number of file uploads")
-            .register(registry)
-            .increment();
+    public void recordConnectorHealth(String channel, boolean isHealthy) {
+        meterRegistry.gauge("connector.health", 
+            java.util.Collections.singletonList(io.micrometer.core.instrument.Tag.of("channel", channel)),
+            isHealthy ? 1.0 : 0.0);
         
-        Timer.builder(METRIC_PREFIX + ".file.upload.size")
-            .tag("mime_type", mimeType)
-            .description("File upload size distribution")
-            .publishPercentiles(0.5, 0.95, 0.99)
-            .register(registry)
-            .record(sizeBytes, TimeUnit.MILLISECONDS); // Record size as milliseconds for histogram
+        if (!isHealthy) {
+            log.warn("Connector {} reported unhealthy status", channel);
+        }
     }
 
-    // ========================================================================
-    // Helper Methods
-    // ========================================================================
+    /**
+     * Record circuit breaker state
+     * 
+     * @param channel Channel name
+     * @param state Circuit breaker state (CLOSED=0, OPEN=1, HALF_OPEN=2)
+     */
+    public void recordCircuitBreakerState(String channel, int state) {
+        meterRegistry.gauge("connector.circuit_breaker.state",
+            java.util.Collections.singletonList(io.micrometer.core.instrument.Tag.of("channel", channel)),
+            state);
+        
+        String stateName = state == 0 ? "CLOSED" : (state == 1 ? "OPEN" : "HALF_OPEN");
+        log.info("Circuit breaker for {} is {}", channel, stateName);
+    }
+
+    // ============================================================================
+    // Utility Methods
+    // ============================================================================
 
     /**
-     * Create tags list for metrics
+     * Get meter registry for custom metrics
      * 
-     * @param keyValues alternating key-value pairs
-     * @return list of Tags
+     * @return MeterRegistry instance
      */
-    private List<Tag> tags(String... keyValues) {
-        List<Tag> tags = new ArrayList<>();
-        for (int i = 0; i < keyValues.length; i += 2) {
-            if (i + 1 < keyValues.length) {
-                tags.add(Tag.of(keyValues[i], keyValues[i + 1]));
-            }
-        }
-        return tags;
+    public MeterRegistry getMeterRegistry() {
+        return meterRegistry;
+    }
+
+    /**
+     * Record custom counter metric
+     * 
+     * @param name Metric name
+     * @param tags Key-value pairs for tags
+     */
+    public void recordCounter(String name, String... tags) {
+        meterRegistry.counter(name, tags).increment();
+    }
+
+    /**
+     * Record custom timer metric
+     * 
+     * @param name Metric name
+     * @param durationMs Duration in milliseconds
+     * @param tags Key-value pairs for tags
+     */
+    public void recordTimer(String name, long durationMs, String... tags) {
+        meterRegistry.timer(name, tags).record(durationMs, TimeUnit.MILLISECONDS);
     }
 }

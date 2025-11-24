@@ -8,290 +8,216 @@ import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.reactor.circuitbreaker.operator.CircuitBreakerOperator;
+import io.github.resilience4j.reactor.retry.RetryOperator;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import io.github.resilience4j.retry.RetryRegistry;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 
 /**
- * BaseConnector Abstract Class
- * Provides common infrastructure for all platform connector implementations
+ * Base implementation of MessageConnector with circuit breaker and retry logic
+ * 
+ * Provides common resilience patterns for all connector implementations:
+ * - Circuit breaker with 50% failure threshold (Constitutional Principle II)
+ * - Exponential backoff retry (max 3 attempts) (Constitutional Principle III)
+ * - Rate limiting support
  * 
  * Aligned with:
- * - Constitutional Principle VII: Pluggable architecture
- * - Constitutional Principle II: High availability via circuit breaker pattern
- * - FR-008: Exponential backoff retry logic (max 3 attempts)
- * - FR-015: Circuit breaker for connector isolation
  * - Task T017
- * 
- * Features:
- * - Circuit breaker with 50% failure threshold
- * - Exponential backoff retry (max 3 attempts, 1s → 2s → 4s)
- * - Reactive WebClient for non-blocking HTTP calls
- * - Structured logging with channel context
- * - Rate limit tracking support
+ * - Research: External API integration pattern
+ * - Constitutional Principles II, III
  * 
  * Usage:
  * <pre>
- * {@code
  * public class WhatsAppConnector extends BaseConnector {
- *     public WhatsAppConnector(WebClient webClient) {
- *         super("WHATSAPP", webClient);
+ *     public WhatsAppConnector() {
+ *         super("whatsapp");
  *     }
  *     
- *     @Override
  *     protected Mono<DeliveryResult> doSendMessage(OutboundMessage message) {
- *         // Platform-specific implementation
+ *         // WhatsApp-specific implementation
  *     }
- * }
  * }
  * </pre>
  */
 @Slf4j
 public abstract class BaseConnector implements MessageConnector {
 
-    private final String channelName;
-    private final WebClient webClient;
     private final CircuitBreaker circuitBreaker;
     private final Retry retry;
-
+    private final String connectorName;
+    
     /**
-     * Constructor for BaseConnector
+     * Initialize connector with circuit breaker and retry logic
      * 
-     * @param channelName the channel this connector handles (WHATSAPP, TELEGRAM, INSTAGRAM)
-     * @param webClient Spring WebClient for HTTP calls
+     * @param connectorName Name of the connector (whatsapp, telegram, instagram)
      */
-    protected BaseConnector(String channelName, WebClient webClient) {
-        this.channelName = channelName;
-        this.webClient = webClient;
+    protected BaseConnector(String connectorName) {
+        this.connectorName = connectorName;
         
-        // Initialize circuit breaker with constitutional requirements
-        this.circuitBreaker = createCircuitBreaker(channelName);
-        
-        // Initialize retry logic with exponential backoff
-        this.retry = createRetry(channelName);
-        
-        log.info("Initialized {} connector with circuit breaker and retry logic", channelName);
-    }
-
-    /**
-     * Create circuit breaker with 50% failure threshold
-     * 
-     * Configuration:
-     * - Sliding window: 10 calls
-     * - Failure threshold: 50%
-     * - Wait duration in open state: 30 seconds
-     * - Permitted calls in half-open state: 3
-     * 
-     * @param name circuit breaker name (channel name)
-     * @return configured CircuitBreaker instance
-     */
-    private CircuitBreaker createCircuitBreaker(String name) {
-        CircuitBreakerConfig config = CircuitBreakerConfig.custom()
-            .slidingWindowSize(10)
-            .failureRateThreshold(50.0f)
-            .waitDurationInOpenState(Duration.ofSeconds(30))
-            .permittedNumberOfCallsInHalfOpenState(3)
-            .automaticTransitionFromOpenToHalfOpenEnabled(true)
-            .recordExceptions(Exception.class)
+        // Circuit breaker configuration - 50% failure threshold
+        CircuitBreakerConfig circuitBreakerConfig = CircuitBreakerConfig.custom()
+            .failureRateThreshold(50.0f) // Open circuit if 50% of calls fail
+            .waitDurationInOpenState(Duration.ofSeconds(30)) // Wait 30s before half-open
+            .slidingWindowSize(10) // Track last 10 calls
+            .minimumNumberOfCalls(5) // Minimum 5 calls before calculating failure rate
+            .permittedNumberOfCallsInHalfOpenState(3) // Allow 3 test calls in half-open state
+            .recordExceptions(RuntimeException.class, java.io.IOException.class)
             .build();
         
-        CircuitBreakerRegistry registry = CircuitBreakerRegistry.of(config);
-        CircuitBreaker cb = registry.circuitBreaker(name + "-circuit-breaker");
+        CircuitBreakerRegistry circuitBreakerRegistry = CircuitBreakerRegistry.of(circuitBreakerConfig);
+        this.circuitBreaker = circuitBreakerRegistry.circuitBreaker(connectorName);
         
-        // Register event listeners for observability
-        cb.getEventPublisher()
+        // Register circuit breaker state change listener
+        this.circuitBreaker.getEventPublisher()
             .onStateTransition(event -> 
-                log.warn("Circuit breaker {} state transition: {} -> {}", 
-                    name, event.getStateTransition().getFromState(), 
-                    event.getStateTransition().getToState()))
-            .onError(event -> 
-                log.error("Circuit breaker {} error: {}", name, event.getThrowable().getMessage()));
+                log.warn("Circuit breaker {} transitioned from {} to {}", 
+                    connectorName, event.getStateTransition().getFromState(), 
+                    event.getStateTransition().getToState()));
         
-        return cb;
-    }
-
-    /**
-     * Create retry with exponential backoff
-     * 
-     * Configuration:
-     * - Max attempts: 3 (per FR-008)
-     * - Initial interval: 1 second
-     * - Multiplier: 2.0 (exponential backoff: 1s → 2s → 4s)
-     * - Retry on all exceptions except validation errors
-     * 
-     * @param name retry name (channel name)
-     * @return configured Retry instance
-     */
-    private Retry createRetry(String name) {
-        RetryConfig config = RetryConfig.custom()
-            .maxAttempts(3)
-            .waitDuration(Duration.ofSeconds(1))
-            .intervalFunction(io.github.resilience4j.core.IntervalFunction.ofExponentialBackoff(Duration.ofSeconds(1), 2.0))
-            .retryExceptions(Exception.class)
-            .ignoreExceptions(IllegalArgumentException.class, SecurityException.class)
+        // Retry configuration - exponential backoff, max 3 attempts
+        RetryConfig retryConfig = RetryConfig.custom()
+            .maxAttempts(3) // Maximum 3 attempts (1 original + 2 retries)
+            .waitDuration(Duration.ofSeconds(1)) // Initial wait duration
+            .intervalFunction(attempt -> {
+                // Exponential backoff: 1s, 2s, 4s
+                long backoffMs = Duration.ofSeconds((long) Math.pow(2, attempt - 1)).toMillis();
+                return backoffMs;
+            })
+            .retryExceptions(RuntimeException.class, java.io.IOException.class)
+            .ignoreExceptions(IllegalArgumentException.class) // Don't retry validation errors
             .build();
         
-        RetryRegistry registry = RetryRegistry.of(config);
-        Retry r = registry.retry(name + "-retry");
+        RetryRegistry retryRegistry = RetryRegistry.of(retryConfig);
+        this.retry = retryRegistry.retry(connectorName);
         
-        // Register event listeners for observability
-        r.getEventPublisher()
+        // Register retry event listeners
+        this.retry.getEventPublisher()
             .onRetry(event -> 
                 log.warn("Retry attempt {} for {}: {}", 
-                    event.getNumberOfRetryAttempts(), name, 
-                    event.getLastThrowable().getMessage()))
-            .onError(event -> 
-                log.error("Retry exhausted for {} after {} attempts", 
-                    name, event.getNumberOfRetryAttempts()));
+                    event.getNumberOfRetryAttempts(), connectorName, 
+                    event.getLastThrowable().getMessage()));
         
-        return r;
+        log.info("Initialized BaseConnector for {} with circuit breaker and retry", connectorName);
     }
 
-    /**
-     * Send message with circuit breaker and retry protection
-     * Delegates to doSendMessage() for platform-specific implementation
-     */
     @Override
-    public Mono<DeliveryResult> sendMessage(OutboundMessage message) {
-        log.debug("Sending message {} via {} connector", message.getMessageId(), channelName);
+    public final Mono<DeliveryResult> sendMessage(OutboundMessage message) {
+        log.debug("Sending message {} via {} with resilience patterns", 
+            message.getMessageId(), getChannelName());
         
         return doSendMessage(message)
             .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
-            .transformDeferred(io.github.resilience4j.reactor.retry.RetryOperator.of(retry))
-            .doOnSuccess(result -> 
-                log.info("Message {} sent successfully via {}: platform_id={}, status={}", 
-                    message.getMessageId(), channelName, result.getPlatformMessageId(), result.getStatus()))
-            .doOnError(error -> 
-                log.error("Failed to send message {} via {} after retries: {}", 
-                    message.getMessageId(), channelName, error.getMessage()));
+            .transformDeferred(RetryOperator.of(retry))
+            .doOnSuccess(result -> {
+                log.info("Message {} delivered successfully: status={}, platformId={}", 
+                    message.getMessageId(), result.getStatus(), result.getPlatformMessageId());
+            })
+            .doOnError(error -> {
+                log.error("Failed to deliver message {} after {} retries: {}", 
+                    message.getMessageId(), retry.getRetryConfig().getMaxAttempts(), 
+                    error.getMessage());
+            });
     }
 
-    /**
-     * Receive webhook with validation
-     * Delegates to doReceiveWebhook() for platform-specific implementation
-     */
     @Override
-    public Mono<InboundMessage> receiveWebhook(String payload, String signature) {
-        log.debug("Receiving webhook for {} connector", channelName);
+    public final Mono<InboundMessage> receiveWebhook(String payload, String signature) {
+        log.debug("Receiving webhook for channel {}", getChannelName());
         
         return doReceiveWebhook(payload, signature)
-            .doOnSuccess(message -> 
-                log.info("Webhook processed for {}: message_id={}", channelName, message.getPlatformMessageId()))
-            .doOnError(error -> 
-                log.error("Failed to process webhook for {}: {}", channelName, error.getMessage()));
+            .doOnSuccess(msg -> {
+                log.info("Webhook processed successfully: platformMessageId={}, channel={}", 
+                    msg.getPlatformMessageId(), getChannelName());
+            })
+            .doOnError(error -> {
+                log.error("Failed to process webhook for {}: {}", 
+                    getChannelName(), error.getMessage());
+            });
     }
 
-    /**
-     * Validate credentials with circuit breaker protection
-     * Delegates to doValidateCredentials() for platform-specific implementation
-     */
     @Override
-    public Mono<ValidationResult> validateCredentials() {
-        log.debug("Validating credentials for {} connector", channelName);
+    public final Mono<ValidationResult> validateCredentials() {
+        log.debug("Validating credentials for {}", getChannelName());
         
         return doValidateCredentials()
-            .transformDeferred(CircuitBreakerOperator.of(circuitBreaker))
             .timeout(Duration.ofSeconds(5))
-            .doOnSuccess(result -> 
-                log.info("Credential validation for {}: valid={}", channelName, result.isValid()))
-            .doOnError(error -> 
-                log.error("Credential validation failed for {}: {}", channelName, error.getMessage()))
-            .onErrorResume(error -> 
-                Mono.just(ValidationResult.failure(error.getMessage(), null)));
+            .doOnSuccess(result -> {
+                if (result.isValid()) {
+                    log.info("Credential validation for {} succeeded: {}", 
+                        getChannelName(), result.getPlatformInfo());
+                } else {
+                    log.warn("Credential validation for {} failed: {}", 
+                        getChannelName(), result.getMessage());
+                }
+            })
+            .doOnError(error -> {
+                log.error("Credential validation error for {}: {}", 
+                    getChannelName(), error.getMessage());
+            })
+            .onErrorResume(error -> Mono.just(ValidationResult.builder()
+                .valid(false)
+                .message("Validation timeout or error: " + error.getMessage())
+                .build()));
     }
 
     @Override
-    public String getChannelName() {
-        return channelName;
+    public Mono<RateLimitInfo> getRateLimitStatus() {
+        // Default implementation - subclasses can override
+        return Mono.just(new RateLimitInfo(
+            Integer.MAX_VALUE, // remainingCalls
+            System.currentTimeMillis() + 60000, // resetTimeEpochMs (1 minute from now)
+            Integer.MAX_VALUE // maxCallsPerWindow
+        ));
     }
 
     /**
-     * Get the WebClient instance for making HTTP calls
+     * Template method for actual message sending logic
+     * Implementations must provide platform-specific delivery
      * 
-     * @return configured WebClient
-     */
-    protected WebClient getWebClient() {
-        return webClient;
-    }
-
-    /**
-     * Get the CircuitBreaker instance for manual control
-     * 
-     * @return CircuitBreaker instance
-     */
-    protected CircuitBreaker getCircuitBreaker() {
-        return circuitBreaker;
-    }
-
-    /**
-     * Get the Retry instance for manual control
-     * 
-     * @return Retry instance
-     */
-    protected Retry getRetry() {
-        return retry;
-    }
-
-    // ========================================================================
-    // Abstract methods to be implemented by platform-specific connectors
-    // ========================================================================
-
-    /**
-     * Platform-specific message sending implementation
-     * 
-     * Requirements:
-     * - Transform OutboundMessage to platform API format
-     * - Make HTTP call to platform API
-     * - Parse response and return DeliveryResult
-     * - Handle rate limiting (throw exception to trigger retry)
-     * 
-     * @param message outbound message to send
+     * @param message Outbound message to send
      * @return Mono of delivery result
      */
     protected abstract Mono<DeliveryResult> doSendMessage(OutboundMessage message);
 
     /**
-     * Platform-specific webhook processing implementation
+     * Template method for webhook processing
+     * Implementations must validate signature and transform payload
      * 
-     * Requirements:
-     * - Validate webhook signature/token
-     * - Parse platform-specific payload format
-     * - Transform to InboundMessage format
-     * - Handle duplicate deliveries (check message ID)
-     * 
-     * @param payload raw webhook payload
-     * @param signature webhook signature header
-     * @return Mono of inbound message
+     * @param payload Raw webhook payload from platform
+     * @param signature Webhook signature for validation
+     * @return Mono of inbound message in internal format
      */
     protected abstract Mono<InboundMessage> doReceiveWebhook(String payload, String signature);
 
     /**
-     * Platform-specific credential validation implementation
-     * 
-     * Requirements:
-     * - Call platform health check endpoint
-     * - Verify API credentials are valid
-     * - Check required permissions/scopes
-     * - Return ValidationResult with details
+     * Template method for credential validation
+     * Implementations must call platform health check API
      * 
      * @return Mono of validation result
      */
     protected abstract Mono<ValidationResult> doValidateCredentials();
 
     /**
-     * Platform-specific rate limit status implementation
-     * Optional: can return default implementation
-     * 
-     * @return Mono of rate limit info
+     * Get circuit breaker for monitoring and manual control
      */
-    @Override
-    public Mono<RateLimitInfo> getRateLimitStatus() {
-        // Default implementation returns unlimited
-        return Mono.just(new RateLimitInfo(Integer.MAX_VALUE, 0L, Integer.MAX_VALUE));
+    protected CircuitBreaker getCircuitBreaker() {
+        return circuitBreaker;
+    }
+
+    /**
+     * Get retry configuration for monitoring
+     */
+    protected Retry getRetry() {
+        return retry;
+    }
+
+    /**
+     * Get connector name
+     */
+    protected String getConnectorName() {
+        return connectorName;
     }
 }

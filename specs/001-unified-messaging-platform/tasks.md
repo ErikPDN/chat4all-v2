@@ -48,38 +48,38 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 ### Shared Libraries
 
-- [x] T011 [P] Create Message DTO in `shared/common-domain/src/main/java/com/chat4all/common/model/MessageDTO.java` with fields: messageId, conversationId, senderId, recipientIds, content, contentType, fileId, channel, timestamp, status, metadata
-- [x] T012 [P] Create Conversation DTO in `shared/common-domain/src/main/java/com/chat4all/common/model/ConversationDTO.java` with fields: conversationId, conversationType, participants (with ParticipantDTO), primaryChannel, messageCount, lastMessageAt, createdAt, updatedAt, archived, metadata
-- [x] T013 [P] Create Channel enum in `shared/common-domain/src/main/java/com/chat4all/common/constant/Channel.java` with values: WHATSAPP, TELEGRAM, INSTAGRAM, INTERNAL, getValue() and fromValue() methods
-- [x] T014 [P] Create MessageStatus enum in `shared/common-domain/src/main/java/com/chat4all/common/constant/MessageStatus.java` with values: PENDING, SENT, DELIVERED, READ, FAILED, state transition validation (canTransitionTo(), isTerminal())
-- [x] T015 [P] Create MessageEvent schema in `shared/common-domain/src/main/java/com/chat4all/common/event/MessageEvent.java` for Kafka events with EventType enum (MESSAGE_CREATED, STATUS_UPDATED, DELIVERY_FAILED) and partition key logic
-- [x] T016 [P] Create MessageConnector interface in `shared/connector-sdk/src/main/java/com/chat4all/connector/api/MessageConnector.java` with reactive methods: Mono<DeliveryResult> sendMessage(OutboundMessage), Mono<InboundMessage> receiveWebhook(WebhookPayload), Mono<ValidationResult> validateCredentials()
-- [x] T017 [P] Create BaseConnector abstract class in `shared/connector-sdk/src/main/java/com/chat4all/connector/api/BaseConnector.java` with circuit breaker (50% failure threshold, 30s wait), retry logic using Resilience4j (exponential backoff 1s→2s→4s, max 3 attempts), WebClient infrastructure, template methods (doSendMessage, doReceiveWebhook, doValidateCredentials)
-- [x] T018 [P] Create JSON log encoder in `shared/observability/src/main/java/com/chat4all/observability/logging/JsonLogEncoder.java` with fields: timestamp (ISO-8601), level, service, logger, thread, message, MDC context (trace_id, span_id, user_id, conversation_id, message_id, channel), exception formatting with stacktrace and cause chain, static helpers (setContext/clearContext/removeContext)
-- [x] T019 [P] Create custom Micrometer metrics in `shared/observability/src/main/java/com/chat4all/observability/metrics/MessageMetrics.java` for message throughput (send/receive/route/retry/error counters), latency (send/delivery/route/API response timers with P50/P95/P99 percentiles), business metrics (throughput gauge, file uploads counter/timer, active conversations gauge)
-- [x] T020 [P] Create OpenTelemetry configuration in `shared/observability/src/main/java/com/chat4all/observability/tracing/TracingConfig.java` with W3C Trace Context propagation, configurable sampling (always-on/always-off/ratio-based), Resource attributes (service.name, service.version, deployment.environment), TracingContext helper for reactive spans with automatic completion on success/error/cancel, production deployment note recommending OpenTelemetry Java Agent with OTLP exporter
+- [x] T011 [P] Create Message DTO in `shared/common-domain/src/main/java/com/chat4all/common/model/MessageDTO.java` with fields: messageId, conversationId, senderId, content, channel, timestamp, status
+- [x] T012 [P] Create Conversation DTO in `shared/common-domain/src/main/java/com/chat4all/common/model/ConversationDTO.java` with fields: conversationId, type, participants, primaryChannel, createdAt
+- [x] T013 [P] Create Channel enum in `shared/common-domain/src/main/java/com/chat4all/common/constant/Channel.java` with values: WHATSAPP, TELEGRAM, INSTAGRAM, INTERNAL
+- [x] T014 [P] Create MessageStatus enum in `shared/common-domain/src/main/java/com/chat4all/common/constant/MessageStatus.java` with values: PENDING, SENT, DELIVERED, READ, FAILED
+- [x] T015 [P] Create MessageEvent schema in `shared/common-domain/src/main/java/com/chat4all/common/event/MessageEvent.java` for Kafka events
+- [x] T016 [P] Create MessageConnector interface in `shared/connector-sdk/src/main/java/com/chat4all/connector/api/MessageConnector.java` with methods: sendMessage(), receiveWebhook(), validateCredentials()
+- [x] T017 [P] Create BaseConnector abstract class in `shared/connector-sdk/src/main/java/com/chat4all/connector/api/BaseConnector.java` with circuit breaker, retry logic using Resilience4j
+- [x] T018 [P] Create JSON log encoder in `shared/observability/src/main/java/com/chat4all/observability/logging/JsonLogEncoder.java` with fields: timestamp, level, service, trace_id, message
+- [x] T019 [P] Create custom Micrometer metrics in `shared/observability/src/main/java/com/chat4all/observability/metrics/MessageMetrics.java` for message throughput, latency, error rates
+- [x] T020 [P] Create OpenTelemetry configuration in `shared/observability/src/main/java/com/chat4all/observability/tracing/TracingConfig.java`
 
 ### Database Schemas
 
-- [x] T021 Create Flyway migration `V001__create_users_table.sql` in `services/user-service/src/main/resources/db/migration/` (users table with UUID PK, display_name VARCHAR(255), user_type CHECK constraint (CUSTOMER, AGENT, SYSTEM), metadata JSONB with GIN index, pgcrypto extension)
-- [x] T022 Create Flyway migration `V002__create_external_identities_table.sql` in `services/user-service/src/main/resources/db/migration/` (external_identities table with platform CHECK constraint (WHATSAPP, TELEGRAM, INSTAGRAM), platform_user_id VARCHAR(255), UNIQUE (platform, platform_user_id), credentials JSONB, last_synced_at, FK to users ON DELETE CASCADE)
-- [x] T023 Create Flyway migration `V003__create_channel_configurations_table.sql` in `services/user-service/src/main/resources/db/migration/` (channel_configurations table with encrypted credentials JSONB using pgcrypto, webhook_url VARCHAR(512), rate_limits JSONB, is_active BOOLEAN, UNIQUE (channel, is_active))
-- [x] T024 Create Flyway migration `V004__create_audit_logs_table.sql` in `services/user-service/src/main/resources/db/migration/` (audit_logs table immutable with triggers prevent_audit_log_update/delete, FK user_id ON DELETE SET NULL, action VARCHAR(100), resource_type/resource_id, details JSONB, ip_address INET, user_agent TEXT, 7-year retention policy)
-- [x] T025 Create MongoDB initialization script `mongo-init.js` in `infrastructure/mongodb/` with collections: messages (sharded by conversation_id), conversations (unique conversation_id, participants array 2-100), files (TTL index 24h expiration on expires_at, file_size max 2GB)
-- [x] T026 Create MongoDB schema validators in `mongo-init.js` for messages collection (message_id UUIDv4 pattern, content_type enum [TEXT, FILE, IMAGE, VIDEO, AUDIO], channel enum [WHATSAPP, TELEGRAM, INSTAGRAM, INTERNAL], status enum [PENDING, SENT, DELIVERED, READ, FAILED], content maxLength 10000), conversations collection (conversation_type enum [1:1, GROUP], participants minItems 2 maxItems 100), files collection (mime_type enum whitelist, file_size max 2147483648, scan_status enum [PENDING, CLEAN, INFECTED])
+- [x] T021 Create Flyway migration `V001__create_users_table.sql` in `services/user-service/src/main/resources/db/migration/` (users table with UUID PK, display_name, user_type ENUM, metadata JSONB)
+- [x] T022 Create Flyway migration `V002__create_external_identities_table.sql` in `services/user-service/src/main/resources/db/migration/` (external_identities table with platform, platform_user_id, verified, unique constraint)
+- [x] T023 Create Flyway migration `V003__create_channel_configurations_table.sql` in `services/user-service/src/main/resources/db/migration/` (channel_configurations table with encrypted credentials JSONB, webhook_url, rate_limits)
+- [x] T024 Create Flyway migration `V004__create_audit_logs_table.sql` in `services/user-service/src/main/resources/db/migration/` (audit_logs table immutable, 7-year retention)
+- [x] T025 Create MongoDB initialization script `mongo-init.js` in `infrastructure/mongodb/` with collections: messages (sharded by conversation_id), conversations, files (TTL index 24h expiration)
+- [x] T026 Create MongoDB schema validators in `mongo-init.js` for messages collection (message_id UUIDv4 unique, content max 10K chars, status enum)
 
 ### Configuration & Security
 
-- [ ] T027 [P] Create Spring Security OAuth2 configuration in `services/api-gateway/src/main/java/com/chat4all/gateway/security/OAuth2Config.java` with scopes: messages:read, messages:write
-- [ ] T028 [P] Create API Gateway routes configuration in `services/api-gateway/src/main/resources/application.yml` routing to message-service, user-service, file-service
-- [ ] T029 [P] Create global exception handler in `services/api-gateway/src/main/java/com/chat4all/gateway/filter/GlobalErrorFilter.java` for standardized error responses
+- [x] T027 [P] Create Spring Security OAuth2 configuration in `services/api-gateway/src/main/java/com/chat4all/gateway/security/OAuth2Config.java` with scopes: messages:read, messages:write
+- [x] T028 [P] Create API Gateway routes configuration in `services/api-gateway/src/main/resources/application.yml` routing to message-service, user-service, file-service
+- [x] T029 [P] Create global exception handler in `services/api-gateway/src/main/java/com/chat4all/gateway/filter/GlobalErrorFilter.java` for standardized error responses
 - [ ] T030 [P] Create health check endpoints in all services at `/actuator/health` using Spring Boot Actuator
 
 ### Kafka Infrastructure
 
-- [ ] T031 Create Kafka topic configuration in `infrastructure/kafka/topics.json` with chat-events topic (partitions: 10, replication: 3, retention: 7 days)
-- [ ] T032 [P] Create Kafka producer configuration in `services/message-service/src/main/java/com/chat4all/message/kafka/KafkaProducerConfig.java` with idempotence enabled
-- [ ] T033 [P] Create Kafka consumer configuration in `services/router-service/src/main/java/com/chat4all/router/consumer/KafkaConsumerConfig.java` with auto-offset-commit disabled
+- [x] T031 Create Kafka topic configuration in `infrastructure/kafka/topics.json` with chat-events topic (partitions: 10, replication: 3, retention: 7 days)
+- [x] T032 [P] Create Kafka producer configuration in `services/message-service/src/main/java/com/chat4all/message/kafka/KafkaProducerConfig.java` with idempotence enabled
+- [x] T033 [P] Create Kafka consumer configuration in `services/router-service/src/main/java/com/chat4all/router/consumer/KafkaConsumerConfig.java` with auto-offset-commit disabled
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -95,31 +95,31 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 #### Message Service - Inbound API
 
-- [ ] T034 [P] [US1] Create Message entity in `services/message-service/src/main/java/com/chat4all/message/domain/Message.java` with @Document annotation for MongoDB (fields: messageId, conversationId, senderId, content, channel, timestamp, status, metadata)
-- [ ] T035 [P] [US1] Create Conversation entity in `services/message-service/src/main/java/com/chat4all/message/domain/Conversation.java` with @Document annotation for MongoDB
-- [ ] T036 [US1] Create MessageRepository in `services/message-service/src/main/java/com/chat4all/message/repository/MessageRepository.java` extending MongoRepository with custom query methods: findByConversationId, findByMessageId
-- [ ] T037 [US1] Create ConversationRepository in `services/message-service/src/main/java/com/chat4all/message/repository/ConversationRepository.java` extending MongoRepository
-- [ ] T038 [US1] Implement IdempotencyService in `services/message-service/src/main/java/com/chat4all/message/service/IdempotencyService.java` using Redis to check message_id existence before processing (FR-006)
-- [ ] T039 [US1] Implement MessageService in `services/message-service/src/main/java/com/chat4all/message/service/MessageService.java` with methods: acceptMessage() (persist to MongoDB), updateStatus(), getMessageById()
-- [ ] T040 [US1] Create SendMessageRequest DTO in `services/message-service/src/main/java/com/chat4all/message/api/dto/SendMessageRequest.java` with validation annotations (@NotNull, @Size)
-- [ ] T041 [US1] Create MessageController in `services/message-service/src/main/java/com/chat4all/message/api/MessageController.java` implementing POST /messages endpoint returning HTTP 202
-- [ ] T042 [US1] Create MessageStatusController in `services/message-service/src/main/java/com/chat4all/message/api/MessageController.java` implementing GET /messages/{id}/status endpoint
-- [ ] T043 [US1] Implement Kafka message producer in `services/message-service/src/main/java/com/chat4all/message/kafka/MessageProducer.java` publishing to chat-events topic with conversation_id as partition key
+- [x] T034 [P] [US1] Create Message entity in `services/message-service/src/main/java/com/chat4all/message/domain/Message.java` with @Document annotation for MongoDB (fields: messageId, conversationId, senderId, content, channel, timestamp, status, metadata)
+- [x] T035 [P] [US1] Create Conversation entity in `services/message-service/src/main/java/com/chat4all/message/domain/Conversation.java` with @Document annotation for MongoDB
+- [x] T036 [US1] Create MessageRepository in `services/message-service/src/main/java/com/chat4all/message/repository/MessageRepository.java` extending MongoRepository with custom query methods: findByConversationId, findByMessageId
+- [x] T037 [US1] Create ConversationRepository in `services/message-service/src/main/java/com/chat4all/message/repository/ConversationRepository.java` extending MongoRepository
+- [x] T038 [US1] Implement IdempotencyService in `services/message-service/src/main/java/com/chat4all/message/service/IdempotencyService.java` using Redis to check message_id existence before processing (FR-006)
+- [x] T039 [US1] Implement MessageService in `services/message-service/src/main/java/com/chat4all/message/service/MessageService.java` with methods: acceptMessage() (persist to MongoDB), updateStatus(), getMessageById()
+- [x] T040 [US1] Create SendMessageRequest DTO in `services/message-service/src/main/java/com/chat4all/message/api/dto/SendMessageRequest.java` with validation annotations (@NotNull, @Size)
+- [x] T041 [US1] Create MessageController in `services/message-service/src/main/java/com/chat4all/message/api/MessageController.java` implementing POST /messages endpoint returning HTTP 202
+- [x] T042 [US1] Create MessageStatusController in `services/message-service/src/main/java/com/chat4all/message/api/MessageController.java` implementing GET /messages/{id}/status endpoint
+- [x] T043 [US1] Implement Kafka message producer in `services/message-service/src/main/java/com/chat4all/message/kafka/MessageProducer.java` publishing to chat-events topic with conversation_id as partition key
 
 #### Router Service - Message Routing
 
-- [ ] T044 [US1] Create MessageEventConsumer in `services/router-service/src/main/java/com/chat4all/router/consumer/MessageEventConsumer.java` consuming from chat-events topic
-- [ ] T045 [US1] Implement DeduplicationHandler in `services/router-service/src/main/java/com/chat4all/router/handler/DeduplicationHandler.java` checking message_id against Redis and MongoDB (FR-006)
-- [ ] T046 [US1] Implement RoutingHandler in `services/router-service/src/main/java/com/chat4all/router/handler/RoutingHandler.java` determining target connector based on channel type
-- [ ] T047 [US1] Create ConnectorClient interface in `services/router-service/src/main/java/com/chat4all/router/connector/ConnectorClient.java` with method: deliverMessage(messageId, connectorUrl)
-- [ ] T048 [US1] Implement RetryHandler in `services/router-service/src/main/java/com/chat4all/router/retry/RetryHandler.java` with exponential backoff (max 3 attempts) using Resilience4j (FR-008)
-- [ ] T049 [US1] Implement DeadLetterQueueHandler in `services/router-service/src/main/java/com/chat4all/router/dlq/DLQHandler.java` for messages exceeding retry limits (FR-009)
-- [ ] T050 [US1] Create StatusUpdateProducer in `services/router-service/src/main/java/com/chat4all/router/kafka/StatusUpdateProducer.java` publishing status changes back to Kafka
+- [x] T044 [US1] Create MessageEventConsumer in `services/router-service/src/main/java/com/chat4all/router/consumer/MessageEventConsumer.java` consuming from chat-events topic
+- [x] T045 [US1] Implement DeduplicationHandler in `services/router-service/src/main/java/com/chat4all/router/handler/DeduplicationHandler.java` checking message_id against Redis and MongoDB (FR-006)
+- [x] T046 [US1] Implement RoutingHandler in `services/router-service/src/main/java/com/chat4all/router/handler/RoutingHandler.java` determining target connector based on channel type
+- [x] T047 [US1] Create ConnectorClient interface in `services/router-service/src/main/java/com/chat4all/router/connector/ConnectorClient.java` with method: deliverMessage(messageId, connectorUrl)
+- [x] T048 [US1] Implement RetryHandler in `services/router-service/src/main/java/com/chat4all/router/retry/RetryHandler.java` with exponential backoff (max 3 attempts) using Resilience4j (FR-008)
+- [x] T049 [US1] Implement DeadLetterQueueHandler in `services/router-service/src/main/java/com/chat4all/router/dlq/DLQHandler.java` for messages exceeding retry limits (FR-009)
+- [x] T050 [US1] Create StatusUpdateProducer in `services/router-service/src/main/java/com/chat4all/router/kafka/StatusUpdateProducer.java` publishing status changes back to Kafka
 
 #### Status Tracking
 
-- [ ] T051 [US1] Create MessageStatusHistory entity in `services/message-service/src/main/java/com/chat4all/message/domain/MessageStatusHistory.java` tracking status transitions (PENDING→SENT→DELIVERED→READ)
-- [ ] T052 [US1] Implement StatusUpdateConsumer in `services/message-service/src/main/java/com/chat4all/message/kafka/StatusUpdateConsumer.java` updating message status in MongoDB
+- [x] T051 [US1] Create MessageStatusHistory entity in `services/message-service/src/main/java/com/chat4all/message/domain/MessageStatusHistory.java` tracking status transitions (PENDING→SENT→DELIVERED→READ)
+- [x] T052 [US1] Implement StatusUpdateConsumer in `services/message-service/src/main/java/com/chat4all/message/kafka/StatusUpdateConsumer.java` updating message status in MongoDB
 - [ ] T053 [US1] Create WebSocket endpoint in `services/message-service/src/main/java/com/chat4all/message/api/MessageStatusWebSocket.java` at /ws/messages/{id}/status for real-time status updates
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - agents can send messages, track delivery status, and messages are routed (to mock connectors)
@@ -139,7 +139,7 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 - [ ] T056 [US2] Implement WebhookProcessorService in `services/message-service/src/main/java/com/chat4all/message/service/WebhookProcessorService.java` validating webhook signatures, transforming platform formats to internal format
 - [ ] T057 [US2] Extend MessageService to handle inbound messages: storeInboundMessage() method persisting to MongoDB with status=RECEIVED
 - [ ] T058 [US2] Create ConversationController in `services/message-service/src/main/java/com/chat4all/message/api/ConversationController.java` implementing GET /conversations endpoint with participant_id filter
-- [ ] T059 [US2] Create ConversationController endpoint GET /conversations/{id}/messages with pagination (before cursor, limit) returning message history
+- [x] T059 [US2] Create ConversationController endpoint GET /conversations/{id}/messages with pagination (before cursor, limit) returning message history
 - [ ] T060 [US2] Implement ConversationService in `services/message-service/src/main/java/com/chat4all/message/service/ConversationService.java` with methods: getConversation(), getMessages(), updateLastActivity()
 - [ ] T061 [US2] Add MongoDB index on messages collection for {conversation_id: 1, timestamp: -1} to optimize history retrieval (SC-009 <2s requirement)
 

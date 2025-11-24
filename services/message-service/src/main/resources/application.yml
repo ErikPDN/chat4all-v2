@@ -1,0 +1,192 @@
+spring:
+  application:
+    name: message-service
+
+  # MongoDB Configuration (Reactive)
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://chat4all:chat4all_dev_password@localhost:27017/chat4all?authSource=admin}
+      database: chat4all
+      auto-index-creation: true
+      uuid-representation: standard
+
+    # Redis Configuration (Reactive)
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:chat4all_dev_password}
+      database: ${REDIS_DATABASE:0}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    
+    # Producer Configuration
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 2147483647  # Max retries (unlimited)
+      enable-idempotence: true
+      compression-type: snappy
+      max-in-flight-requests-per-connection: 5
+      batch-size: 16384
+      linger-ms: 10
+      properties:
+        max.request.size: 1048576  # 1MB
+    
+    # Consumer Configuration (for status updates)
+    consumer:
+      group-id: message-service-status-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: true
+      properties:
+        spring.json.trusted.packages: "*"
+        isolation.level: read_committed
+
+# Server Configuration
+server:
+  port: ${SERVER_PORT:8081}
+  netty:
+    connection-timeout: 30s
+    idle-timeout: 60s
+
+# Management & Observability
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+      base-path: /actuator
+  
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  
+  health:
+    redis:
+      enabled: true
+    mongo:
+      enabled: true
+  
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      environment: ${ENVIRONMENT:dev}
+  
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLE_RATE:1.0}  # 100% sampling in dev
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.chat4all: DEBUG
+    org.springframework.data.mongodb: DEBUG
+    org.springframework.kafka: INFO
+    io.micrometer: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Application-Specific Configuration
+message:
+  idempotency:
+    ttl-days: 7  # Idempotency key retention (matches Kafka retention)
+  
+  content:
+    max-length: 10000  # Max message content length (FR-003)
+  
+  retry:
+    max-attempts: 3
+    backoff-delay-ms: 1000
+    backoff-multiplier: 2.0
+  
+  status:
+    update-batch-size: 100  # Batch size for status update processing
+
+# Resilience4j Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      kafka-producer:
+        sliding-window-size: 100
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 10
+        automatic-transition-from-open-to-half-open-enabled: true
+      
+      redis:
+        sliding-window-size: 50
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 5
+  
+  retry:
+    instances:
+      kafka-producer:
+        max-attempts: 3
+        wait-duration: 500ms
+        exponential-backoff-multiplier: 2.0
+      
+      redis:
+        max-attempts: 2
+        wait-duration: 100ms
+
+# Topics Configuration
+kafka:
+  topics:
+    chat-events: chat-events
+    delivery-status: delivery-status
+    webhook-events: webhook-events
+
+---
+# Development Profile
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+logging:
+  level:
+    com.chat4all: DEBUG
+    org.springframework.data.mongodb.core: DEBUG
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0  # 100% sampling
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  level:
+    root: WARN
+    com.chat4all: INFO
+
+management:
+  tracing:
+    sampling:
+      probability: 0.1  # 10% sampling in production
+
+message:
+  retry:
+    max-attempts: 5  # More retries in production
