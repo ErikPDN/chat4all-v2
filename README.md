@@ -81,6 +81,12 @@ High-scale unified messaging platform that routes messages between internal clie
 
    This starts: Kafka, PostgreSQL, MongoDB, Redis, MinIO, Prometheus, Grafana, Jaeger
 
+   **Default Credentials**:
+   - **MongoDB**: `chat4all` / `chat4all_dev_password`
+   - **PostgreSQL**: `chat4all` / `chat4all_dev_password`
+   - **Redis**: `chat4all_dev_password`
+   - **MinIO**: `minioadmin` / `minioadmin`
+
 3. **Build all modules**:
    ```bash
    mvn clean install
@@ -103,19 +109,63 @@ High-scale unified messaging platform that routes messages between internal clie
 
 5. **Send a test message**:
    ```bash
-   curl -X POST http://localhost:8080/messages \
+   curl -X POST http://localhost:8081/api/messages \
      -H "Content-Type: application/json" \
      -d '{
-       "conversationId": "550e8400-e29b-41d4-a716-446655440000",
-       "senderId": "agent-001",
+       "conversationId": "conv-test-001",
+       "senderId": "user-001",
        "content": "Hello from Chat4All!",
        "channel": "WHATSAPP"
      }'
    ```
 
-   Expected: HTTP 202 Accepted with `message_id`
+   **Expected Response** (HTTP 202 Accepted):
+   ```json
+   {
+     "messageId": "3d63cf3b-466d-46c5-9efe-2569b98a8915",
+     "conversationId": "conv-test-001",
+     "status": "PENDING",
+     "acceptedAt": "2025-11-24T18:47:49.292241137Z",
+     "statusUrl": "/api/messages/3d63cf3b-466d-46c5-9efe-2569b98a8915/status"
+   }
+   ```
 
-6. **Access observability tools**:
+6. **Retrieve conversation messages**:
+   ```bash
+   curl http://localhost:8081/api/v1/conversations/conv-test-001/messages | jq
+   ```
+
+   **Expected Response** (HTTP 200 OK):
+   ```json
+   {
+     "conversationId": "conv-test-001",
+     "messages": [
+       {
+         "messageId": "3d63cf3b-466d-46c5-9efe-2569b98a8915",
+         "conversationId": "conv-test-001",
+         "senderId": "user-001",
+         "content": "Hello from Chat4All!",
+         "channel": "WHATSAPP",
+         "status": "DELIVERED",
+         "timestamp": "2025-11-24T18:47:49.291Z"
+       }
+     ],
+     "nextCursor": null,
+     "hasMore": false,
+     "count": 1
+   }
+   ```
+
+   **Pagination options**:
+   ```bash
+   # Limit results
+   curl "http://localhost:8081/api/v1/conversations/conv-test-001/messages?limit=10"
+
+   # Cursor-based pagination (use nextCursor from previous response)
+   curl "http://localhost:8081/api/v1/conversations/conv-test-001/messages?before=2025-11-24T18:47:49.291Z&limit=50"
+   ```
+
+7. **Access observability tools**:
    - **Grafana**: http://localhost:3000 (admin/admin)
    - **Prometheus**: http://localhost:9090
    - **Jaeger**: http://localhost:16686
@@ -169,7 +219,12 @@ Environment variables for local development:
 ```bash
 # Database
 DB_POSTGRES_URL=jdbc:postgresql://localhost:5432/chat4all
+DB_POSTGRES_USER=chat4all
+DB_POSTGRES_PASSWORD=chat4all_dev_password
+
 DB_MONGODB_URI=mongodb://localhost:27017/chat4all
+DB_MONGODB_USER=chat4all
+DB_MONGODB_PASSWORD=chat4all_dev_password
 
 # Kafka
 KAFKA_BOOTSTRAP_SERVERS=localhost:9092
@@ -177,6 +232,7 @@ KAFKA_BOOTSTRAP_SERVERS=localhost:9092
 # Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
+REDIS_PASSWORD=chat4all_dev_password
 
 # S3 (MinIO)
 S3_ENDPOINT=http://localhost:9000
@@ -186,6 +242,27 @@ S3_SECRET_KEY=minioadmin
 # Observability
 OTEL_EXPORTER_JAEGER_ENDPOINT=http://localhost:14250
 ```
+
+## Troubleshooting
+
+### Reset Infrastructure
+
+If you encounter issues with containers or data corruption:
+
+```bash
+# Stop all services and remove volumes (⚠️ deletes all data)
+docker-compose down -v
+
+# Restart with clean state
+docker-compose up -d
+```
+
+### Common Issues
+
+- **Port conflicts**: Ensure ports 8081, 8082, 5432, 27017, 6379, 9092 are available
+- **MongoDB authentication errors**: Verify credentials match `docker-compose.yml`
+- **Kafka connection refused**: Wait 30s after `docker-compose up` for broker initialization
+- **Message not found warnings**: Normal after fresh start - old Kafka offsets reference missing messages
 
 ## Contributing
 
