@@ -1,7 +1,9 @@
 package com.chat4all.message.api;
 
+import com.chat4all.message.domain.Conversation;
 import com.chat4all.message.domain.Message;
 import com.chat4all.message.repository.MessageRepository;
+import com.chat4all.message.service.ConversationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -17,6 +19,7 @@ import java.util.List;
  * 
  * Endpoints:
  * - GET /v1/conversations/{id}/messages - Get message history with pagination
+ * - GET /v1/conversations - Get conversations by participant
  * 
  * Security: Protected by API Gateway OAuth2 (scope: messages:read)
  * 
@@ -30,6 +33,68 @@ import java.util.List;
 public class ConversationController {
 
     private final MessageRepository messageRepository;
+    private final ConversationService conversationService;
+
+    /**
+     * Retrieves conversations for a participant
+     * 
+     * Endpoint: GET /api/v1/conversations
+     * 
+     * Query Parameters:
+     * - participantId: User ID to filter conversations (required)
+     * - includeArchived: Whether to include archived conversations (default: false)
+     * - limit: Max number of conversations to return (default: 50, max: 100)
+     * 
+     * Response: HTTP 200 OK with list of conversations sorted by last activity descending
+     * 
+     * Example:
+     * GET /api/v1/conversations?participantId=user-001&limit=20
+     * 
+     * @param participantId User ID to filter conversations
+     * @param includeArchived Whether to include archived conversations
+     * @param limit Number of conversations to return (default: 50, max: 100)
+     * @return Mono<ResponseEntity<ConversationListResponse>> with conversation list
+     */
+    @GetMapping
+    public Mono<ResponseEntity<ConversationListResponse>> getConversations(
+        @RequestParam String participantId,
+        @RequestParam(defaultValue = "false") boolean includeArchived,
+        @RequestParam(defaultValue = "50") int limit
+    ) {
+        log.debug("Fetching conversations for participant: {}, includeArchived={}, limit={}", 
+            participantId, includeArchived, limit);
+
+        // Validate and cap limit
+        if (limit <= 0) {
+            limit = 50;
+        }
+        if (limit > 100) {
+            limit = 100;
+        }
+
+        final int finalLimit = limit;
+
+        return conversationService.listConversationsByParticipant(participantId, includeArchived, finalLimit)
+            .collectList()
+            .map(conversations -> {
+                log.info("Retrieved {} conversations for participant: {}", conversations.size(), participantId);
+
+                ConversationListResponse response = ConversationListResponse.builder()
+                    .participantId(participantId)
+                    .conversations(conversations)
+                    .includeArchived(includeArchived)
+                    .count(conversations.size())
+                    .build();
+
+                return ResponseEntity.ok(response);
+            })
+            .defaultIfEmpty(ResponseEntity.ok(ConversationListResponse.builder()
+                .participantId(participantId)
+                .conversations(java.util.List.of())
+                .includeArchived(includeArchived)
+                .count(0)
+                .build()));
+    }
 
     /**
      * Retrieves message history for a conversation with cursor-based pagination
@@ -126,6 +191,35 @@ public class ConversationController {
                 .hasMore(false)
                 .count(0)
                 .build()));
+    }
+
+    /**
+     * Response DTO for conversation list endpoint
+     */
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class ConversationListResponse {
+        /**
+         * Participant identifier
+         */
+        private String participantId;
+
+        /**
+         * List of conversations (sorted by last activity descending)
+         */
+        private java.util.List<Conversation> conversations;
+
+        /**
+         * Whether archived conversations are included
+         */
+        private boolean includeArchived;
+
+        /**
+         * Number of conversations in this response
+         */
+        private int count;
     }
 
     /**

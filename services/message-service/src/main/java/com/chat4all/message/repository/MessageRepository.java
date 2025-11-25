@@ -116,6 +116,18 @@ public interface MessageRepository extends ReactiveMongoRepository<Message, Stri
     Mono<Message> findByPlatformMessageId(String platformMessageId);
 
     /**
+     * Finds messages by external platform message ID (metadata field)
+     * 
+     * Uses sparse index on metadata.platform_message_id
+     * Used for inbound webhook deduplication
+     * 
+     * @param platformMessageId External platform's message ID
+     * @return Mono containing the message if found
+     */
+    @Query("{ 'metadata.platform_message_id': ?0 }")
+    Mono<Message> findByMetadataPlatformMessageId(String platformMessageId);
+
+    /**
      * Counts messages in a conversation
      * 
      * @param conversationId Conversation identifier

@@ -130,4 +130,31 @@ public interface ConversationRepository extends ReactiveMongoRepository<Conversa
      */
     @Query(value = "{ 'participants.userId': ?0 }", count = true)
     Mono<Long> countByParticipantUserId(String userId);
+
+    /**
+     * Finds conversations by participant user ID ordered by last message timestamp
+     * 
+     * Uses compound index: {participants.user_id: 1, last_message_at: -1}
+     * 
+     * @param userId User ID (participant)
+     * @param pageable Pagination parameters
+     * @return Flux of conversations sorted by recent activity
+     */
+    @Query(value = "{ 'participants.userId': ?0 }", sort = "{ 'lastMessageAt': -1 }")
+    Flux<Conversation> findByParticipantsUserIdOrderByLastMessageAtDesc(String userId, Pageable pageable);
+
+    /**
+     * Finds conversations by participant user ID and archived status ordered by last message timestamp
+     * 
+     * @param userId User ID (participant)
+     * @param archived Archive status filter
+     * @param pageable Pagination parameters
+     * @return Flux of filtered conversations sorted by recent activity
+     */
+    @Query(value = "{ 'participants.userId': ?0, 'archived': ?1 }", sort = "{ 'lastMessageAt': -1 }")
+    Flux<Conversation> findByParticipantsUserIdAndArchivedOrderByLastMessageAtDesc(
+        String userId, 
+        boolean archived, 
+        Pageable pageable
+    );
 }

@@ -22,6 +22,12 @@ public enum MessageStatus {
     PENDING("pending"),
 
     /**
+     * Message received from external platform (inbound)
+     * Used for messages FROM customers via webhooks
+     */
+    RECEIVED("received"),
+
+    /**
      * Message sent to external platform's API
      * Platform acknowledged receipt but not yet delivered to recipient
      */
@@ -79,6 +85,9 @@ public enum MessageStatus {
      * Check if transition to new status is valid
      * Status can only progress forward (except to FAILED)
      * 
+     * Outbound flow: PENDING → SENT → DELIVERED → READ
+     * Inbound flow: RECEIVED (terminal state for inbound messages)
+     * 
      * @param newStatus target status
      * @return true if transition is valid
      */
@@ -98,15 +107,20 @@ public enum MessageStatus {
             return false;
         }
 
+        // RECEIVED is terminal for inbound messages (no further transitions except FAILED)
+        if (this == RECEIVED) {
+            return false;
+        }
+
         // Can only progress forward: PENDING → SENT → DELIVERED → READ
         return newStatus.ordinal() > this.ordinal();
     }
 
     /**
      * Check if this is a terminal status (no further transitions allowed)
-     * @return true if terminal status (READ or FAILED)
+     * @return true if terminal status (READ, RECEIVED, or FAILED)
      */
     public boolean isTerminal() {
-        return this == READ || this == FAILED;
+        return this == READ || this == RECEIVED || this == FAILED;
     }
 }

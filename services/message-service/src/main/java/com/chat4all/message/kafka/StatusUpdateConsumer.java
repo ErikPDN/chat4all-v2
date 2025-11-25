@@ -1,7 +1,9 @@
 package com.chat4all.message.kafka;
 
 import com.chat4all.common.constant.MessageStatus;
+import com.chat4all.common.event.MessageEvent;
 import com.chat4all.message.service.MessageService;
+import com.chat4all.message.websocket.MessageStatusWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -48,6 +50,7 @@ import java.util.Map;
 public class StatusUpdateConsumer {
 
     private final MessageService messageService;
+    private final MessageStatusWebSocketHandler webSocketHandler;
 
     /**
      * Consumes status update events from Kafka
@@ -97,6 +100,25 @@ public class StatusUpdateConsumer {
 
             // Update message status (reactive) - block to ensure completion before ACK
             messageService.updateStatus(messageId, newStatus, updatedBy)
+                .then(messageService.getMessageById(messageId))
+                .doOnSuccess(updatedMessage -> {
+                    // Broadcast status update to WebSocket clients
+                    if (updatedMessage != null) {
+                        MessageEvent event = MessageEvent.builder()
+                            .eventType(MessageEvent.EventType.STATUS_UPDATE)
+                            .messageId(updatedMessage.getMessageId())
+                            .conversationId(updatedMessage.getConversationId())
+                            .senderId(updatedMessage.getSenderId())
+                            .channel(updatedMessage.getChannel())
+                            .status(updatedMessage.getStatus())
+                            .timestamp(updatedMessage.getUpdatedAt())
+                            .build();
+                        
+                        webSocketHandler.publishEvent(event);
+                        log.debug("Broadcasted status update to {} WebSocket clients", 
+                            webSocketHandler.getActiveSessionCount());
+                    }
+                })
                 .onErrorResume(IllegalArgumentException.class, e -> {
                     // Message not found - log warning and continue
                     log.warn("Status update for unknown message: {} (status: {})", messageId, newStatus);

@@ -120,7 +120,7 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 - [x] T051 [US1] Create MessageStatusHistory entity in `services/message-service/src/main/java/com/chat4all/message/domain/MessageStatusHistory.java` tracking status transitions (PENDING→SENT→DELIVERED→READ)
 - [x] T052 [US1] Implement StatusUpdateConsumer in `services/message-service/src/main/java/com/chat4all/message/kafka/StatusUpdateConsumer.java` updating message status in MongoDB
-- [ ] T053 [US1] Create WebSocket endpoint in `services/message-service/src/main/java/com/chat4all/message/api/MessageStatusWebSocket.java` at /ws/messages/{id}/status for real-time status updates
+- [x] T053 [US1] Create WebSocket endpoint in `services/message-service/src/main/java/com/chat4all/message/api/MessageStatusWebSocket.java` at /ws/messages/{id}/status for real-time status updates
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - agents can send messages, track delivery status, and messages are routed (to mock connectors)
 
@@ -134,14 +134,14 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 ### Implementation for User Story 2
 
-- [ ] T054 [P] [US2] Create WebhookController in `services/message-service/src/main/java/com/chat4all/message/api/WebhookController.java` implementing POST /webhooks/{channel} endpoint with signature validation
-- [ ] T055 [P] [US2] Create InboundMessageDTO in `services/message-service/src/main/java/com/chat4all/message/api/dto/InboundMessageDTO.java` for webhook payloads (platform-agnostic format)
-- [ ] T056 [US2] Implement WebhookProcessorService in `services/message-service/src/main/java/com/chat4all/message/service/WebhookProcessorService.java` validating webhook signatures, transforming platform formats to internal format
-- [ ] T057 [US2] Extend MessageService to handle inbound messages: storeInboundMessage() method persisting to MongoDB with status=RECEIVED
-- [ ] T058 [US2] Create ConversationController in `services/message-service/src/main/java/com/chat4all/message/api/ConversationController.java` implementing GET /conversations endpoint with participant_id filter
+- [x] T054 [P] [US2] Create WebhookController in `services/message-service/src/main/java/com/chat4all/message/api/WebhookController.java` implementing POST /webhooks/{channel} endpoint with signature validation
+- [x] T055 [P] [US2] Create InboundMessageDTO in `services/message-service/src/main/java/com/chat4all/message/api/dto/InboundMessageDTO.java` for webhook payloads (platform-agnostic format)
+- [x] T056 [US2] Implement WebhookProcessorService in `services/message-service/src/main/java/com/chat4all/message/service/WebhookProcessorService.java` validating webhook signatures, transforming platform formats to internal format
+- [x] T057 [US2] Extend MessageService to handle inbound messages: storeInboundMessage() method persisting to MongoDB with status=RECEIVED
+- [x] T058 [US2] Create ConversationController in `services/message-service/src/main/java/com/chat4all/message/api/ConversationController.java` implementing GET /conversations endpoint with participant_id filter
 - [x] T059 [US2] Create ConversationController endpoint GET /conversations/{id}/messages with pagination (before cursor, limit) returning message history
-- [ ] T060 [US2] Implement ConversationService in `services/message-service/src/main/java/com/chat4all/message/service/ConversationService.java` with methods: getConversation(), getMessages(), updateLastActivity()
-- [ ] T061 [US2] Add MongoDB index on messages collection for {conversation_id: 1, timestamp: -1} to optimize history retrieval (SC-009 <2s requirement)
+- [x] T060 [US2] Implement ConversationService in `services/message-service/src/main/java/com/chat4all/message/service/ConversationService.java` with methods: getConversation(), getMessages(), updateLastActivity()
+- [x] T061 [US2] Add MongoDB index on messages collection for {conversation_id: 1, timestamp: -1} to optimize history retrieval (SC-009 <2s requirement)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work - full bidirectional messaging is functional
 

@@ -121,6 +121,12 @@ public class MessageEvent {
         MESSAGE_CREATED,
 
         /**
+         * Message received from external platform (inbound)
+         * Triggered by webhook from WhatsApp/Telegram/Instagram
+         */
+        MESSAGE_RECEIVED,
+
+        /**
          * Message sent to external platform
          * Status updated to SENT
          */

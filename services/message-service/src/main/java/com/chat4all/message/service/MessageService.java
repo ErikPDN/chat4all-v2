@@ -7,6 +7,7 @@ import com.chat4all.message.domain.MessageStatusHistory;
 import com.chat4all.message.kafka.MessageProducer;
 import com.chat4all.message.repository.MessageRepository;
 import com.chat4all.message.repository.MessageStatusHistoryRepository;
+import com.chat4all.message.websocket.MessageStatusWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
@@ -40,6 +41,8 @@ public class MessageService {
     private final MessageStatusHistoryRepository statusHistoryRepository;
     private final IdempotencyService idempotencyService;
     private final MessageProducer messageProducer;
+    private final ConversationService conversationService;
+    private final MessageStatusWebSocketHandler webSocketHandler;
 
     /**
      * Accepts a new message for processing (reactive).
@@ -256,6 +259,140 @@ public class MessageService {
     }
 
     /**
+     * Processes an inbound message from external platforms (webhook).
+     * 
+     * This is the entry point for messages received FROM customers via WhatsApp/Telegram/Instagram.
+     * 
+     * Flow:
+     * 1. Check idempotency using platformMessageId
+     * 2. Ensure conversation exists (create if needed)
+     * 3. Build Message entity with status RECEIVED
+     * 4. Persist to MongoDB
+     * 5. Update conversation last activity
+     * 6. Publish MESSAGE_RECEIVED event to Kafka
+     * 
+     * @param platformMessageId Platform-specific message identifier (for deduplication)
+     * @param conversationId Conversation identifier
+     * @param senderId Sender's platform identifier
+     * @param content Message content
+     * @param channel Platform channel
+     * @param timestamp Message timestamp from platform (or current time)
+     * @param metadata Platform-specific metadata
+     * @param primaryChannel Primary channel for conversation creation
+     * @return Mono<Message> Persisted inbound message
+     */
+    public Mono<Message> processInboundMessage(
+        String platformMessageId,
+        String conversationId,
+        String senderId,
+        String content,
+        com.chat4all.common.constant.Channel channel,
+        Instant timestamp,
+        java.util.Map<String, Object> metadata,
+        com.chat4all.common.constant.Channel primaryChannel
+    ) {
+        log.debug("Processing inbound message from {}: platformId={}, conversationId={}", 
+            channel, platformMessageId, conversationId);
+
+        // Use platformMessageId for idempotency (prevents duplicate webhook deliveries)
+        return idempotencyService.isDuplicate(platformMessageId)
+            .flatMap(isDuplicate -> {
+                if (isDuplicate) {
+                    log.warn("Duplicate inbound message detected: {}", platformMessageId);
+                    // Return existing message instead of error (idempotent behavior)
+                    return messageRepository.findByMetadataPlatformMessageId(platformMessageId)
+                        .switchIfEmpty(Mono.defer(() -> {
+                            // Inconsistent state: Redis key exists but MongoDB document missing
+                            // This can happen due to race conditions, Redis TTL mismatch, or failed saves
+                            log.error("INCONSISTENT STATE: Idempotency key exists but message not found in MongoDB: {}", platformMessageId);
+                            log.info("Recovering: Removing stale idempotency key and reprocessing message: {}", platformMessageId);
+                            
+                            // Remove stale Redis key and reprocess message (resilient recovery)
+                            return idempotencyService.remove(platformMessageId)
+                                .then(conversationService.getOrCreateConversation(conversationId, primaryChannel, senderId))
+                                .flatMap(conversation -> {
+                                    log.info("Stale idempotency key removed, reprocessing message: {}", platformMessageId);
+                                    
+                                    // Build inbound message (duplicate logic for recovery path)
+                                    Instant now = Instant.now();
+                                    Message inboundMessage = Message.builder()
+                                        .messageId(UUID.randomUUID().toString())
+                                        .conversationId(conversationId)
+                                        .senderId(senderId)
+                                        .content(content)
+                                        .contentType("TEXT")
+                                        .channel(channel)
+                                        .status(MessageStatus.RECEIVED)
+                                        .timestamp(timestamp != null ? timestamp : now)
+                                        .createdAt(now)
+                                        .updatedAt(now)
+                                        .metadata(Message.MessageMetadata.builder()
+                                            .platformMessageId(platformMessageId)
+                                            .retryCount(0)
+                                            .additionalData(metadata)
+                                            .build())
+                                        .build();
+
+                                    // Persist recovered message
+                                    return messageRepository.save(inboundMessage)
+                                        .flatMap(savedMessage -> {
+                                            log.info("RECOVERED: Inbound message persisted after stale key removal: {} (platform: {})",
+                                                savedMessage.getMessageId(), platformMessageId);
+
+                                            return conversationService.updateLastActivity(conversationId, savedMessage.getTimestamp())
+                                                .thenReturn(savedMessage);
+                                        })
+                                        .doOnSuccess(savedMessage -> {
+                                            publishMessageEvent(savedMessage, MessageEvent.EventType.MESSAGE_RECEIVED);
+                                        });
+                                });
+                        }));
+                }
+
+                // Normal path: Ensure conversation exists (create if needed)
+                return conversationService.getOrCreateConversation(conversationId, primaryChannel, senderId)
+                    .flatMap(conversation -> {
+                        log.debug("Conversation ready for inbound message: {}", conversationId);
+
+                        // Build inbound message
+                        Instant now = Instant.now();
+                        Message inboundMessage = Message.builder()
+                            .messageId(UUID.randomUUID().toString())
+                            .conversationId(conversationId)
+                            .senderId(senderId)
+                            .content(content)
+                            .contentType("TEXT")
+                            .channel(channel)
+                            .status(MessageStatus.RECEIVED) // Inbound messages start as RECEIVED
+                            .timestamp(timestamp != null ? timestamp : now)
+                            .createdAt(now)
+                            .updatedAt(now)
+                            .metadata(Message.MessageMetadata.builder()
+                                .platformMessageId(platformMessageId)
+                                .retryCount(0)
+                                .additionalData(metadata)
+                                .build())
+                            .build();
+
+                        // Persist message
+                        return messageRepository.save(inboundMessage)
+                            .flatMap(savedMessage -> {
+                                log.info("Inbound message persisted: {} (conversation: {}, platform: {})",
+                                    savedMessage.getMessageId(), conversationId, platformMessageId);
+
+                                // Update conversation last activity
+                                return conversationService.updateLastActivity(conversationId, savedMessage.getTimestamp())
+                                    .thenReturn(savedMessage);
+                            })
+                            .doOnSuccess(savedMessage -> {
+                                // Publish MESSAGE_RECEIVED event to Kafka (fire-and-forget)
+                                publishMessageEvent(savedMessage, MessageEvent.EventType.MESSAGE_RECEIVED);
+                            });
+                    });
+            });
+    }
+
+    /**
      * Publishes a message event to Kafka.
      * 
      * Converts Message entity to MessageEvent and sends to chat-events topic.
@@ -283,6 +420,11 @@ public class MessageService {
             messageProducer.sendMessageEvent(event);
             log.debug("Published {} event for message {}", eventType, message.getMessageId());
 
+            // Also broadcast to WebSocket clients for real-time updates
+            webSocketHandler.publishEvent(event);
+            log.debug("Broadcasted {} event to {} WebSocket clients", 
+                eventType, webSocketHandler.getActiveSessionCount());
+
         } catch (Exception e) {
             // Event publishing failure should not block message acceptance
             log.error("Failed to publish {} event for message {}: {}",
@@ -300,6 +442,7 @@ public class MessageService {
     private MessageEvent.EventType mapStatusToEventType(MessageStatus status) {
         return switch (status) {
             case PENDING -> MessageEvent.EventType.MESSAGE_CREATED;
+            case RECEIVED -> MessageEvent.EventType.MESSAGE_RECEIVED;
             case SENT -> MessageEvent.EventType.MESSAGE_SENT;
             case DELIVERED -> MessageEvent.EventType.MESSAGE_DELIVERED;
             case READ -> MessageEvent.EventType.MESSAGE_READ;
