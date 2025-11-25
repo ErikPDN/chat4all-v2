@@ -155,10 +155,10 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 ### Implementation for User Story 3
 
-- [ ] T062 [P] [US3] Create FileAttachment entity in `services/file-service/src/main/java/com/chat4all/file/domain/FileAttachment.java` with @Document annotation (fields: fileId, messageId, filename, fileSize, mimeType, storageUrl, thumbnailUrl, uploadedAt, expiresAt)
-- [ ] T063 [P] [US3] Create FileRepository in `services/file-service/src/main/java/com/chat4all/file/repository/FileRepository.java` extending MongoRepository
-- [ ] T064 [US3] Implement S3StorageService in `services/file-service/src/main/java/com/chat4all/file/storage/S3StorageService.java` using AWS SDK for Java v2 with methods: generatePresignedUploadUrl(), generatePresignedDownloadUrl()
-- [ ] T065 [US3] Create FileController in `services/file-service/src/main/java/com/chat4all/file/api/FileController.java` implementing POST /files/initiate endpoint returning presigned S3 URL and fileId
+- [x] T062 [P] [US3] Create FileAttachment entity in `services/file-service/src/main/java/com/chat4all/file/domain/FileAttachment.java` with @Document annotation (fields: fileId, messageId, filename, fileSize, mimeType, storageUrl, thumbnailUrl, uploadedAt, expiresAt)
+- [x] T063 [P] [US3] Create FileRepository in `services/file-service/src/main/java/com/chat4all/file/repository/FileRepository.java` extending MongoRepository
+- [x] T064 [US3] Implement S3StorageService in `services/file-service/src/main/java/com/chat4all/file/storage/S3StorageService.java` using AWS SDK for Java v2 with methods: generatePresignedUploadUrl(), generatePresignedDownloadUrl()
+- [x] T065 [US3] Create FileController in `services/file-service/src/main/java/com/chat4all/file/api/FileController.java` implementing POST /files/initiate endpoint returning presigned S3 URL and fileId
 - [ ] T066 [US3] Implement multipart upload support in `services/file-service/src/main/java/com/chat4all/file/storage/MultipartUploadService.java` for files >100MB (FR-024)
 - [ ] T067 [US3] Implement file type validation in `services/file-service/src/main/java/com/chat4all/file/service/FileValidationService.java` checking mime types against whitelist (jpg, png, pdf, docx, mp4, etc.) (FR-022)
 - [ ] T068 [US3] Integrate malware scanning in `services/file-service/src/main/java/com/chat4all/file/scan/MalwareScanService.java` using ClamAV or cloud service API (FR-023)

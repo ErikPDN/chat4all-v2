@@ -255,95 +255,12 @@ print('Conversations collection created successfully');
 // 3. Files Collection
 // ============================================================================
 
-print('Creating files collection with JSON Schema validator...');
+// NOTE: Files collection is managed by Spring Data MongoDB (@Document annotations)
+// The schema validator is not created here to avoid conflicts with Spring Data's
+// auto-index creation. Indexes are defined in FileAttachment.java using @Indexed annotations.
 
-db.createCollection('files', {
-  validator: {
-    $jsonSchema: {
-      bsonType: 'object',
-      required: ['file_id', 'message_id', 'filename', 'file_size', 'mime_type', 'storage_url', 'uploaded_at', 'expires_at'],
-      properties: {
-        file_id: {
-          bsonType: 'string',
-          description: 'Unique file identifier in UUIDv4 format',
-          pattern: '^file-[0-9a-f]{8}'
-        },
-        message_id: {
-          bsonType: 'string',
-          description: 'Reference to the message this file is attached to'
-        },
-        filename: {
-          bsonType: 'string',
-          description: 'Original filename',
-          maxLength: 255
-        },
-        file_size: {
-          bsonType: 'long',
-          description: 'File size in bytes (max 2GB per FR-019)',
-          minimum: 0,
-          maximum: 2147483648
-        },
-        mime_type: {
-          bsonType: 'string',
-          description: 'MIME type of the file (validated against whitelist per FR-022)'
-        },
-        storage_url: {
-          bsonType: 'string',
-          description: 'S3 storage URL for the file'
-        },
-        thumbnail_url: {
-          bsonType: ['string', 'null'],
-          description: 'S3 URL for thumbnail (for images/videos per FR-025)'
-        },
-        uploaded_at: {
-          bsonType: 'date',
-          description: 'When the file was uploaded'
-        },
-        expires_at: {
-          bsonType: 'date',
-          description: '24-hour expiration timestamp (FR-021)'
-        },
-        scan_status: {
-          enum: ['PENDING', 'CLEAN', 'INFECTED'],
-          description: 'Malware scan status (FR-023)'
-        },
-        metadata: {
-          bsonType: 'object',
-          description: 'Additional file metadata',
-          properties: {
-            uploader_ip: {
-              bsonType: ['string', 'null'],
-              description: 'IP address of the uploader'
-            },
-            original_filename: {
-              bsonType: ['string', 'null'],
-              description: 'Original filename before sanitization'
-            }
-          }
-        }
-      }
-    }
-  }
-});
-
-print('Creating indexes for files collection...');
-
-// Unique index on file_id
-db.files.createIndex({ file_id: 1 }, { unique: true, name: 'idx_file_id_unique' });
-
-// Index for message attachments lookup
-db.files.createIndex({ message_id: 1 }, { name: 'idx_message_files' });
-
-// TTL index for automatic file expiration after 24 hours (FR-021)
-db.files.createIndex(
-  { expires_at: 1 },
-  { expireAfterSeconds: 0, name: 'idx_files_ttl' }
-);
-
-// Index for malware scan status queries
-db.files.createIndex({ scan_status: 1 }, { name: 'idx_scan_status' });
-
-print('Files collection created successfully');
+print('Files collection will be created automatically by Spring Data MongoDB');
+print('Schema validation and indexes are defined in FileAttachment.java');
 
 // ============================================================================
 // Sharding Configuration (commented out for single-server deployments)

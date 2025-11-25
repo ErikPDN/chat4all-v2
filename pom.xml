@@ -7,7 +7,7 @@
 
     <groupId>com.chat4all</groupId>
     <artifactId>chat4all-parent</artifactId>
-    <version>2.0.0-SNAPSHOT</version>
+    <version>1.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Chat4All v2 - Unified Messaging Platform</name>
@@ -60,6 +60,7 @@
         <!-- Services -->
         <module>services/message-service</module>
         <module>services/router-service</module>
+        <module>services/file-service</module>
     </modules>
 
     <dependencyManagement>
