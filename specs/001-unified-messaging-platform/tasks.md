@@ -159,14 +159,14 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 - [x] T063 [P] [US3] Create FileRepository in `services/file-service/src/main/java/com/chat4all/file/repository/FileRepository.java` extending MongoRepository
 - [x] T064 [US3] Implement S3StorageService in `services/file-service/src/main/java/com/chat4all/file/storage/S3StorageService.java` using AWS SDK for Java v2 with methods: generatePresignedUploadUrl(), generatePresignedDownloadUrl()
 - [x] T065 [US3] Create FileController in `services/file-service/src/main/java/com/chat4all/file/api/FileController.java` implementing POST /files/initiate endpoint returning presigned S3 URL and fileId
-- [ ] T066 [US3] Implement multipart upload support in `services/file-service/src/main/java/com/chat4all/file/storage/MultipartUploadService.java` for files >100MB (FR-024)
-- [ ] T067 [US3] Implement file type validation in `services/file-service/src/main/java/com/chat4all/file/service/FileValidationService.java` checking mime types against whitelist (jpg, png, pdf, docx, mp4, etc.) (FR-022)
-- [ ] T068 [US3] Integrate malware scanning in `services/file-service/src/main/java/com/chat4all/file/scan/MalwareScanService.java` using ClamAV or cloud service API (FR-023)
-- [ ] T069 [US3] Implement thumbnail generation in `services/file-service/src/main/java/com/chat4all/file/thumbnail/ThumbnailService.java` using Thumbnailator library for images (FR-025)
-- [ ] T070 [US3] Create FileUploadCompleteEvent in `shared/common-domain/src/main/java/com/chat4all/common/event/FileUploadCompleteEvent.java` for Kafka
-- [ ] T071 [US3] Update Message entity to include fileAttachments field (List<FileReference>) in `services/message-service/src/main/java/com/chat4all/message/domain/Message.java`
-- [ ] T072 [US3] Update SendMessageRequest DTO to accept fileIds array in `services/message-service/src/main/java/com/chat4all/message/api/dto/SendMessageRequest.java`
-- [ ] T073 [US3] Create MongoDB TTL index on files collection with expiresAt field (24h expiration) in mongo-init.js
+- [x] T066 [US3] Implement multipart upload support in `services/file-service/src/main/java/com/chat4all/file/storage/MultipartUploadService.java` for files >100MB (FR-024)
+- [x] T067 [US3] Implement file type validation in `services/file-service/src/main/java/com/chat4all/file/service/FileValidationService.java` checking mime types against whitelist (jpg, png, pdf, docx, mp4, etc.) (FR-022)
+- [x] T068 [US3] Integrate malware scanning in `services/file-service/src/main/java/com/chat4all/file/scan/MalwareScanService.java` using ClamAV or cloud service API (FR-023)
+- [x] T069 [US3] Implement thumbnail generation in `services/file-service/src/main/java/com/chat4all/file/thumbnail/ThumbnailService.java` using Thumbnailator library for images (FR-025)
+- [x] T070 [US3] Create FileUploadCompleteEvent in `shared/common-domain/src/main/java/com/chat4all/common/event/FileUploadCompleteEvent.java` for Kafka
+- [x] T071 [US3] Update Message entity to include fileAttachments field (List<FileReference>) in `services/message-service/src/main/java/com/chat4all/message/domain/Message.java`
+- [x] T072 [US3] Update SendMessageRequest DTO to accept fileIds array in `services/message-service/src/main/java/com/chat4all/message/api/dto/SendMessageRequest.java`
+- [x] T073 [US3] Create MongoDB TTL index on files collection with expiresAt field (24h expiration) in mongo-init.js
 
 **Checkpoint**: File attachments are fully functional - agents can upload and send files to customers
 

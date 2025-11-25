@@ -65,7 +65,8 @@ public class MessageController {
             .recipientIds(request.getRecipientIds())
             .content(request.getContent())
             .contentType(request.getContentType())
-            .fileId(request.getFileId())
+            .fileId(request.getFileId()) // Deprecated - kept for backward compatibility
+            .fileIds(request.getFileIds()) // New: supports multiple file attachments (T072)
             .channel(request.getChannel())
             .timestamp(Instant.now())
             .build();

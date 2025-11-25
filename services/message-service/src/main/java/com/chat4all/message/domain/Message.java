@@ -100,9 +100,25 @@ public class Message {
     /**
      * File ID if content_type is not TEXT
      * References files.file_id in MongoDB
+     * @deprecated Use fileIds instead (supports multiple attachments)
      */
+    @Deprecated
     @Field("file_id")
     private String fileId;
+
+    /**
+     * List of file attachment IDs
+     * References files.file_id in MongoDB
+     * Supports multiple file attachments per message (FR-019)
+     * 
+     * Usage:
+     * - Client uploads files via POST /files/initiate
+     * - Client sends message with fileIds array
+     * - Message service validates all fileIds exist and status=READY
+     * - Files are linked to message
+     */
+    @Field("file_ids")
+    private List<String> fileIds;
 
     /**
      * Platform channel for this message

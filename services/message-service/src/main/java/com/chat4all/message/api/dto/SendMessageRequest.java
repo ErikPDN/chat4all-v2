@@ -72,8 +72,29 @@ public class SendMessageRequest {
     /**
      * File ID if content type is not TEXT
      * References files.file_id in MongoDB
+     * @deprecated Use fileIds instead (supports multiple attachments)
      */
+    @Deprecated
     private String fileId;
+
+    /**
+     * List of file attachment IDs
+     * References files.file_id in MongoDB
+     * Supports multiple file attachments per message (FR-019)
+     * 
+     * Validation:
+     * - All fileIds must exist in file-service
+     * - All files must have status=READY (malware scan passed)
+     * - Max 10 files per message
+     * 
+     * Usage:
+     * 1. Client uploads files via POST /files/initiate
+     * 2. Client receives fileIds in response
+     * 3. Client includes fileIds in SendMessageRequest
+     * 4. Message service validates files and creates message
+     */
+    @Size(max = 10, message = "Maximum 10 file attachments per message")
+    private List<@NotBlank String> fileIds;
 
     /**
      * Platform channel for message delivery
