@@ -93,21 +93,31 @@ public class S3Config {
      * - Upload URLs (PUT) - allows client to upload directly to S3
      * - Download URLs (GET) - temporary download links
      * 
+     * Important: Must use path-style URLs for MinIO compatibility.
+     * Without forcePathStyle, AWS SDK uses virtual-hosted-style URLs
+     * (bucket.endpoint) which may cause NoSuchBucket errors.
+     * 
      * @return Configured S3Presigner
      */
     @Bean
     public S3Presigner s3Presigner() {
-        log.info("Initializing S3 presigner with endpoint: {}, region: {}", endpoint, region);
+        log.info("Initializing S3 presigner with endpoint: {}, region: {}, bucket: {}", 
+            endpoint, region, bucketName);
 
         AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
-
-        // Explicitly configure HTTP client to avoid "Multiple HTTP implementations" error
-        SdkHttpClient httpClient = UrlConnectionHttpClient.builder().build();
 
         return S3Presigner.builder()
             .endpointOverride(URI.create(endpoint))
             .region(Region.of(region))
             .credentialsProvider(StaticCredentialsProvider.create(credentials))
+            // Force path-style URLs (http://localhost:9000/bucket/key)
+            // instead of virtual-hosted-style (http://bucket.localhost:9000/key)
+            // This is required for MinIO and prevents NoSuchBucket errors
+            .serviceConfiguration(
+                software.amazon.awssdk.services.s3.S3Configuration.builder()
+                    .pathStyleAccessEnabled(true)
+                    .build()
+            )
             .build();
     }
 

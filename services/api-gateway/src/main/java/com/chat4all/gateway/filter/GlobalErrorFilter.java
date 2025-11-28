@@ -102,8 +102,10 @@ public class GlobalErrorFilter implements ErrorWebExceptionHandler {
      * @return HttpStatus appropriate status code
      */
     private HttpStatus determineHttpStatus(Throwable ex) {
-        if (ex instanceof ResponseStatusException) {
-            return ((ResponseStatusException) ex).getStatusCode();
+        if (ex instanceof ResponseStatusException rse) {
+            // Convert HttpStatusCode to HttpStatus (Spring 6+ compatibility)
+            HttpStatus resolved = HttpStatus.resolve(rse.getStatusCode().value());
+            return resolved != null ? resolved : HttpStatus.INTERNAL_SERVER_ERROR;
         }
 
         // Map common exception types to status codes

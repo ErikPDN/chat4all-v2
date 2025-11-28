@@ -300,7 +300,9 @@ public class MessageService {
                 if (isDuplicate) {
                     log.warn("Duplicate inbound message detected: {}", platformMessageId);
                     // Return existing message instead of error (idempotent behavior)
+                    // Use .next() to get first result (handles legacy duplicates gracefully)
                     return messageRepository.findByMetadataPlatformMessageId(platformMessageId)
+                        .next()
                         .switchIfEmpty(Mono.defer(() -> {
                             // Inconsistent state: Redis key exists but MongoDB document missing
                             // This can happen due to race conditions, Redis TTL mismatch, or failed saves

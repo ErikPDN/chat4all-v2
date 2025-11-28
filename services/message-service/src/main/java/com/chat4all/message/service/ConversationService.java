@@ -58,6 +58,7 @@ public class ConversationService {
      * @param primaryChannel Primary communication channel
      * @param participantId Initial participant ID (customer)
      * @return Mono<Conversation> Existing or newly created conversation
+     * @throws IllegalArgumentException if conversationId is null or empty
      */
     public Mono<Conversation> getOrCreateConversation(
         String conversationId, 
@@ -66,9 +67,21 @@ public class ConversationService {
     ) {
         log.debug("Getting or creating conversation: {}", conversationId);
 
-        return conversationRepository.findByConversationId(conversationId)
+        // ⚠️ CRITICAL VALIDATION: Prevent duplicate key error on null conversationId
+        // This happens when webhook callbacks (READ/DELIVERED status) arrive without full message data
+        if (conversationId == null || conversationId.trim().isEmpty()) {
+            // Generate fallback conversationId based on participant and channel
+            String fallbackId = generateFallbackConversationId(participantId, primaryChannel);
+            log.warn("ConversationId is null/empty! Generating fallback ID: {} (participant: {}, channel: {})", 
+                fallbackId, participantId, primaryChannel);
+            conversationId = fallbackId;
+        }
+
+        final String safeConversationId = conversationId; // Final for lambda
+
+        return conversationRepository.findByConversationId(safeConversationId)
             .switchIfEmpty(Mono.defer(() -> {
-                log.info("Creating new conversation: {} for participant: {}", conversationId, participantId);
+                log.info("Creating new conversation: {} for participant: {}", safeConversationId, participantId);
                 
                 Instant now = Instant.now();
                 
@@ -89,7 +102,7 @@ public class ConversationService {
                     .build();
 
                 Conversation newConversation = Conversation.builder()
-                    .conversationId(conversationId)
+                    .conversationId(safeConversationId)
                     .conversationType("1:1")
                     .participants(List.of(customerParticipant, systemParticipant)) // Now has 2 participants
                     .primaryChannel(primaryChannel)
@@ -102,7 +115,29 @@ public class ConversationService {
 
                 return conversationRepository.save(newConversation);
             }))
-            .doOnSuccess(conv -> log.debug("Conversation ready: {}", conversationId));
+            .doOnSuccess(conv -> log.debug("Conversation ready: {}", safeConversationId));
+    }
+
+    /**
+     * Generates a fallback conversationId when the original is null/empty.
+     * 
+     * Format: "fallback-{channel}-{participantId}-{timestamp}"
+     * Example: "fallback-WHATSAPP-user123-1732588800000"
+     * 
+     * This prevents duplicate key errors in MongoDB while maintaining uniqueness.
+     * 
+     * @param participantId Participant identifier
+     * @param channel Communication channel
+     * @return Generated fallback conversation ID
+     */
+    private String generateFallbackConversationId(String participantId, Channel channel) {
+        String sanitizedParticipant = (participantId != null && !participantId.isEmpty()) 
+            ? participantId.replaceAll("[^a-zA-Z0-9-]", "") 
+            : "unknown";
+        String channelName = (channel != null) ? channel.name() : "UNKNOWN";
+        long timestamp = System.currentTimeMillis();
+        
+        return String.format("fallback-%s-%s-%d", channelName, sanitizedParticipant, timestamp);
     }
 
     /**

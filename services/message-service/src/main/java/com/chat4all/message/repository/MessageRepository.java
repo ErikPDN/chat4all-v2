@@ -118,14 +118,17 @@ public interface MessageRepository extends ReactiveMongoRepository<Message, Stri
     /**
      * Finds messages by external platform message ID (metadata field)
      * 
-     * Uses sparse index on metadata.platform_message_id
+     * Uses sparse unique index on metadata.platform_message_id
      * Used for inbound webhook deduplication
      * 
+     * Returns Flux to handle legacy duplicate data gracefully.
+     * With unique index, there should only be one result.
+     * 
      * @param platformMessageId External platform's message ID
-     * @return Mono containing the message if found
+     * @return Flux of messages (should be at most one with unique index)
      */
     @Query("{ 'metadata.platform_message_id': ?0 }")
-    Mono<Message> findByMetadataPlatformMessageId(String platformMessageId);
+    Flux<Message> findByMetadataPlatformMessageId(String platformMessageId);
 
     /**
      * Counts messages in a conversation

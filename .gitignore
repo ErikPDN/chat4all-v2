@@ -22,6 +22,7 @@ hs_err_pid*
 replay_pid*
 
 # IDE
+.vscode/
 .idea/
 *.iml
 *.iws

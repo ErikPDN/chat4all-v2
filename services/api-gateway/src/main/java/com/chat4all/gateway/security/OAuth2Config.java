@@ -65,6 +65,14 @@ public class OAuth2Config {
                 .pathMatchers("/actuator/health").permitAll()
                 .pathMatchers("/api/webhooks/**").permitAll()
                 
+                // OpenAPI/Swagger documentation endpoints - public access
+                .pathMatchers("/v3/api-docs/**").permitAll()
+                .pathMatchers("/swagger-ui.html").permitAll()
+                .pathMatchers("/swagger-ui/**").permitAll()
+                .pathMatchers("/webjars/**").permitAll()
+                .pathMatchers("/api/messages/v3/api-docs/**").permitAll()
+                .pathMatchers("/api/files/v3/api-docs/**").permitAll()
+                
                 // Message endpoints
                 .pathMatchers("/api/messages/**").hasAnyAuthority("SCOPE_messages:read", "SCOPE_messages:write", "SCOPE_admin")
                 .pathMatchers("/api/messages").hasAnyAuthority("SCOPE_messages:write", "SCOPE_admin")

@@ -38,42 +38,38 @@ spring:
 
       # Route Definitions
       routes:
-        # Message Service Routes
-        - id: message-service-send
+        # ============================================
+        # OpenAPI Documentation Routes (public access)
+        # ============================================
+        - id: message-service-openapi
           uri: http://localhost:8081
           predicates:
-            - Path=/api/messages
-            - Method=POST
+            - Path=/api/messages/v3/api-docs/**
           filters:
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 100
-                redis-rate-limiter.burstCapacity: 200
+            - StripPrefix=2
+
+        - id: file-service-openapi
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/files/v3/api-docs/**
+          filters:
+            - StripPrefix=2
+
+        # ============================================
+        # Message Service Routes (consolidated)
+        # ============================================
+        - id: message-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/messages/**
+          filters:
             - name: CircuitBreaker
               args:
                 name: messageServiceCircuitBreaker
                 fallbackUri: forward:/fallback/messages
-            - name: Retry
-              args:
-                retries: 3
-                statuses: BAD_GATEWAY,SERVICE_UNAVAILABLE
-                methods: POST
-                backoff:
-                  firstBackoff: 50ms
-                  maxBackoff: 500ms
-                  factor: 2
 
-        - id: message-service-get-status
-          uri: http://localhost:8081
-          predicates:
-            - Path=/api/messages/{id}/status
-            - Method=GET
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: messageServiceCircuitBreaker
-
-        - id: message-service-conversations
+        # Conversations Route
+        - id: conversation-service
           uri: http://localhost:8081
           predicates:
             - Path=/api/conversations/**
@@ -82,7 +78,8 @@ spring:
               args:
                 name: messageServiceCircuitBreaker
 
-        - id: message-service-webhooks
+        # Webhooks Route (message-service handles webhooks)
+        - id: webhook-service
           uri: http://localhost:8081
           predicates:
             - Path=/api/webhooks/**
@@ -92,8 +89,10 @@ spring:
                 redis-rate-limiter.replenishRate: 1000
                 redis-rate-limiter.burstCapacity: 2000
 
-        # User Service Routes
-        - id: user-service-users
+        # ============================================
+        # User Service Routes (consolidated)
+        # ============================================
+        - id: user-service
           uri: http://localhost:8082
           predicates:
             - Path=/api/users/**
@@ -103,61 +102,40 @@ spring:
                 name: userServiceCircuitBreaker
                 fallbackUri: forward:/fallback/users
 
-        - id: user-service-identities
-          uri: http://localhost:8082
-          predicates:
-            - Path=/api/users/{userId}/identities/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: userServiceCircuitBreaker
-
-        # File Service Routes
-        - id: file-service-upload
+        # ============================================
+        # File Service Routes (consolidated)
+        # ============================================
+        - id: file-service
           uri: http://localhost:8083
           predicates:
-            - Path=/api/files/initiate
-            - Method=POST
+            - Path=/api/files/**
           filters:
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 50
-                redis-rate-limiter.burstCapacity: 100
             - name: CircuitBreaker
               args:
                 name: fileServiceCircuitBreaker
                 fallbackUri: forward:/fallback/files
 
-        - id: file-service-download
-          uri: http://localhost:8083
-          predicates:
-            - Path=/api/files/{id}
-            - Method=GET
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: fileServiceCircuitBreaker
-
-        # Connector Webhook Routes (bypassing OAuth2 - webhook signature validation at connector level)
-        - id: whatsapp-webhook
+        # ============================================
+        # Connector Webhook Routes (direct to connectors)
+        # ============================================
+        - id: whatsapp-connector
           uri: http://localhost:8091
           predicates:
-            - Path=/api/webhooks/whatsapp/**
+            - Path=/api/connectors/whatsapp/**
 
-        - id: telegram-webhook
+        - id: telegram-connector
           uri: http://localhost:8092
           predicates:
-            - Path=/api/webhooks/telegram/**
+            - Path=/api/connectors/telegram/**
 
-        - id: instagram-webhook
+        - id: instagram-connector
           uri: http://localhost:8093
           predicates:
-            - Path=/api/webhooks/instagram/**
+            - Path=/api/connectors/instagram/**
 
       # Default filters applied to all routes
       default-filters:
         - AddRequestHeader=X-Gateway-Version, 1.0.0
-        - AddResponseHeader=X-Response-Time, ${response.time}
         - name: Retry
           args:
             retries: 3
@@ -222,3 +200,18 @@ logging:
     org.springframework.security: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# SpringDoc OpenAPI Aggregation Configuration
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: Message Service
+        url: /api/messages/v3/api-docs
+      - name: File Service
+        url: /api/files/v3/api-docs
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  webjars:
+    prefix: /webjars

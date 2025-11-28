@@ -166,7 +166,11 @@ public class Message {
         /**
          * External platform message ID
          * e.g., "wamid.XXX" for WhatsApp
+         * 
+         * UNIQUE INDEX: Prevents duplicate inbound messages from webhooks
+         * Sparse index: Only indexed when field is present (allows null values)
          */
+        @Indexed(unique = true, sparse = true)
         @Field("platform_message_id")
         private String platformMessageId;
 

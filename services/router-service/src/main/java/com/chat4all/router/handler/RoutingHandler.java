@@ -101,26 +101,30 @@ public class RoutingHandler {
     /**
      * Delivers a message to the specified connector.
      * 
-     * MVP Implementation: Simulates delivery by logging
-     * Production Implementation: Makes actual HTTP POST to connector
+     * Makes actual HTTP POST to connector service.
      * 
      * @param messageEvent The message to deliver
      * @param connectorUrl The connector service URL
      * @return true if delivery succeeded, false otherwise
      */
     private boolean deliverMessage(MessageEvent messageEvent, String connectorUrl) {
-        log.info(">>> SIMULATING DELIVERY <<<");
+        log.info(">>> DELIVERING TO CONNECTOR <<<");
         log.info("    Message ID: {}", messageEvent.getMessageId());
         log.info("    Channel: {}", messageEvent.getChannel());
         log.info("    Connector URL: {}", connectorUrl);
         log.info("    Content: {}", messageEvent.getContent());
-        log.info(">>> DELIVERY SIMULATION COMPLETE <<<");
 
-        // MVP: Always return true to simulate successful delivery
-        // Production: Replace with actual HTTP call
-        // return connectorClient.deliverMessage(messageEvent, connectorUrl);
-        
-        return true; // Simulate success
+        try {
+            // Make actual HTTP call to connector
+            boolean success = connectorClient.deliverMessage(messageEvent, connectorUrl);
+            
+            log.info(">>> DELIVERY {} <<<", success ? "SUCCEEDED" : "FAILED");
+            return success;
+            
+        } catch (Exception e) {
+            log.error(">>> DELIVERY FAILED WITH ERROR: {} <<<", e.getMessage());
+            throw new RuntimeException("Connector delivery failed", e);
+        }
     }
 
     /**

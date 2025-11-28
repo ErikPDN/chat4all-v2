@@ -21,7 +21,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Spring Boot -->
-        <spring-boot.version>3.5.0</spring-boot.version>
+        <spring-boot.version>3.4.1</spring-boot.version>
         <spring-cloud.version>2024.0.0</spring-cloud.version>
 
         <!-- Messaging & Streaming -->
@@ -29,7 +29,6 @@
 
         <!-- Databases -->
         <postgresql.version>42.7.1</postgresql.version>
-        <mongodb.version>4.11.1</mongodb.version>
 
         <!-- Resilience & Circuit Breaker -->
         <resilience4j.version>2.1.0</resilience4j.version>
@@ -58,9 +57,15 @@
         <module>shared/connector-sdk</module>
         
         <!-- Services -->
+        <module>services/api-gateway</module>
         <module>services/message-service</module>
         <module>services/router-service</module>
         <module>services/file-service</module>
+        
+        <!-- Connectors -->
+        <module>services/connectors/whatsapp-connector</module>
+        <module>services/connectors/telegram-connector</module>
+        <module>services/connectors/instagram-connector</module>
     </modules>
 
     <dependencyManagement>
@@ -95,13 +100,6 @@
                 <groupId>org.postgresql</groupId>
                 <artifactId>postgresql</artifactId>
                 <version>${postgresql.version}</version>
-            </dependency>
-
-            <!-- MongoDB -->
-            <dependency>
-                <groupId>org.mongodb</groupId>
-                <artifactId>mongodb-driver-sync</artifactId>
-                <version>${mongodb.version}</version>
             </dependency>
 
             <!-- Resilience4j -->

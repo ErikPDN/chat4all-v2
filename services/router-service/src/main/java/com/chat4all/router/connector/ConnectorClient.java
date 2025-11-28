@@ -4,6 +4,12 @@ import com.chat4all.common.event.MessageEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Connector Client Interface (T047)
@@ -16,13 +22,10 @@ import org.springframework.stereotype.Component;
  * - Support circuit breaker pattern (via Resilience4j)
  * - Return delivery success/failure status
  * 
- * MVP Implementation: Placeholder for future HTTP client
- * Production Implementation: Uses Spring WebClient with proper error handling
- * 
  * Connector Service Contract:
- * - Endpoint: POST /api/deliver
- * - Request Body: MessageEvent (JSON)
- * - Response: 200 OK (success) or 4xx/5xx (failure)
+ * - Endpoint: POST /v1/messages
+ * - Request Body: { messageId, to/chatId/recipient, content, conversationId, senderId }
+ * - Response: 202 ACCEPTED (success) or 4xx/5xx (failure)
  * 
  * @author Chat4All Team
  * @version 1.0.0
@@ -32,61 +35,112 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ConnectorClient {
 
+    private final WebClient.Builder webClientBuilder;
+
     /**
      * Delivers a message to the specified connector service.
      * 
-     * MVP: Not implemented yet (routing handler simulates delivery)
-     * Production: Makes actual HTTP POST to connector
+     * Makes actual HTTP POST to connector /v1/messages endpoint.
      * 
-     * @param messageEvent The message to deliver
+     * @param messageEvent The message event to deliver
      * @param connectorUrl The base URL of the connector service
-     * @return true if delivery succeeded (HTTP 200), false otherwise
+     * @return true if delivery succeeded (HTTP 202), false otherwise
      */
     public boolean deliverMessage(MessageEvent messageEvent, String connectorUrl) {
-        log.debug("ConnectorClient.deliverMessage called (not implemented in MVP)");
+        log.debug("ConnectorClient.deliverMessage called");
         log.debug("  Message ID: {}", messageEvent.getMessageId());
         log.debug("  Connector URL: {}", connectorUrl);
 
-        // TODO: Implement actual HTTP client for production
-        // Example implementation:
-        /*
         try {
-            ResponseEntity<Void> response = webClient
+            // Build request payload matching connector DTOs
+            Map<String, Object> payload = buildConnectorRequest(messageEvent);
+
+            // Make HTTP POST to connector
+            WebClient webClient = webClientBuilder.baseUrl(connectorUrl).build();
+            
+            webClient
                 .post()
-                .uri(connectorUrl + "/api/deliver")
-                .bodyValue(messageEvent)
+                .uri("/v1/messages")
+                .bodyValue(payload)
                 .retrieve()
                 .toBodilessEntity()
+                .timeout(Duration.ofSeconds(10))
                 .block();
 
-            return response != null && response.getStatusCode().is2xxSuccessful();
+            log.info("Connector delivery succeeded: messageId={}", messageEvent.getMessageId());
+            return true;
+
         } catch (WebClientResponseException e) {
-            log.error("Connector returned error: {}", e.getStatusCode());
+            log.error("Connector returned error: status={}, body={}", 
+                e.getStatusCode(), e.getResponseBodyAsString());
             return false;
         } catch (Exception e) {
-            log.error("Error calling connector: {}", e.getMessage());
-            throw new ConnectorException("Failed to deliver message", e);
+            log.error("Error calling connector: {}", e.getMessage(), e);
+            return false;
         }
-        */
+    }
 
-        // For MVP, return true (routing handler does simulation)
-        return true;
+    /**
+     * Builds the request payload for the connector service.
+     * 
+     * Maps MessageEvent to connector's SendMessageRequest format.
+     * Field names vary by channel (to/chatId/recipient).
+     * 
+     * @param messageEvent The message event
+     * @return Request map
+     */
+    private Map<String, Object> buildConnectorRequest(MessageEvent messageEvent) {
+        Map<String, Object> request = new HashMap<>();
+        
+        request.put("messageId", messageEvent.getMessageId());
+        request.put("content", messageEvent.getContent() != null ? messageEvent.getContent() : "");
+        request.put("conversationId", messageEvent.getConversationId());
+        request.put("senderId", messageEvent.getSenderId());
+        
+        // Extract recipient from conversationId (format: "user1_user2" or similar)
+        // For MVP, we'll use conversationId as recipient identifier
+        String recipient = messageEvent.getConversationId();
+        
+        // Add channel-specific recipient field
+        // WhatsApp uses "to", Telegram uses "chatId", Instagram uses "recipient"
+        switch (messageEvent.getChannel()) {
+            case WHATSAPP -> request.put("to", recipient);
+            case TELEGRAM -> request.put("chatId", recipient);
+            case INSTAGRAM -> request.put("recipient", recipient);
+            default -> request.put("to", recipient);
+        }
+        
+        return request;
     }
 
     /**
      * Validates connector credentials by calling health check endpoint.
      * 
-     * MVP: Not implemented
-     * Production: Calls GET /api/health on connector service
+     * Calls GET /v1/health on connector service.
      * 
      * @param connectorUrl The connector service URL
-     * @return true if connector is healthy and credentials valid
+     * @return true if connector is healthy
      */
     public boolean validateConnector(String connectorUrl) {
-        log.debug("ConnectorClient.validateConnector called (not implemented in MVP)");
+        log.debug("ConnectorClient.validateConnector called");
         log.debug("  Connector URL: {}", connectorUrl);
 
-        // TODO: Implement health check for production
-        return true;
+        try {
+            WebClient webClient = webClientBuilder.baseUrl(connectorUrl).build();
+            
+            String response = webClient
+                .get()
+                .uri("/v1/health")
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+            log.info("Connector health check succeeded: {}", response);
+            return true;
+
+        } catch (Exception e) {
+            log.error("Connector health check failed: {}", e.getMessage());
+            return false;
+        }
     }
 }

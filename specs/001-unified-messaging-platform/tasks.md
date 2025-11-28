@@ -223,30 +223,30 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 ### WhatsApp Connector
 
-- [ ] T093 [P] [Connector] Create WhatsAppConnector in `services/connectors/whatsapp-connector/src/main/java/com/chat4all/connector/whatsapp/WhatsAppConnector.java` implementing MessageConnector interface
-- [ ] T094 [P] [Connector] Implement WhatsAppApiClient in `services/connectors/whatsapp-connector/src/main/java/com/chat4all/connector/whatsapp/client/WhatsAppApiClient.java` using Spring WebClient with Resilience4j circuit breaker
-- [ ] T095 [P] [Connector] Create MessageTransformer in `services/connectors/whatsapp-connector/src/main/java/com/chat4all/connector/whatsapp/transformer/MessageTransformer.java` converting internal Message format to WhatsApp API format
-- [ ] T096 [P] [Connector] Implement webhook handler in `services/connectors/whatsapp-connector/src/main/java/com/chat4all/connector/whatsapp/api/WebhookController.java` for status updates and incoming messages with signature validation
-- [ ] T097 [P] [Connector] Create WhatsApp configuration in `services/connectors/whatsapp-connector/src/main/resources/application.yml` with credentials, API URL, rate limits
-- [ ] T098 [P] [Connector] Implement credential validation in WhatsAppConnector.validateCredentials() method calling WhatsApp API health check
+- [x] T093 [P] [Connector] Create WhatsAppConnector in `services/connectors/whatsapp-connector/src/main/java/com/chat4all/connector/whatsapp/WhatsAppConnector.java` implementing MessageConnector interface
+- [x] T094 [P] [Connector] Implement WhatsAppApiClient in `services/connectors/whatsapp-connector/src/main/java/com/chat4all/connector/whatsapp/client/WhatsAppApiClient.java` using Spring WebClient with Resilience4j circuit breaker
+- [x] T095 [P] [Connector] Create MessageTransformer in `services/connectors/whatsapp-connector/src/main/java/com/chat4all/connector/whatsapp/transformer/MessageTransformer.java` converting internal Message format to WhatsApp API format
+- [x] T096 [P] [Connector] Implement webhook handler in `services/connectors/whatsapp-connector/src/main/java/com/chat4all/connector/whatsapp/api/WebhookController.java` for status updates and incoming messages with signature validation
+- [x] T097 [P] [Connector] Create WhatsApp configuration in `services/connectors/whatsapp-connector/src/main/resources/application.yml` with credentials, API URL, rate limits
+- [x] T098 [P] [Connector] Implement credential validation in WhatsAppConnector.validateCredentials() method calling WhatsApp API health check
 
 ### Telegram Connector
 
-- [ ] T099 [P] [Connector] Create TelegramConnector in `services/connectors/telegram-connector/src/main/java/com/chat4all/connector/telegram/TelegramConnector.java` implementing MessageConnector interface
-- [ ] T100 [P] [Connector] Implement TelegramBotClient in `services/connectors/telegram-connector/src/main/java/com/chat4all/connector/telegram/client/TelegramBotClient.java` using Spring WebClient
-- [ ] T101 [P] [Connector] Create MessageTransformer in `services/connectors/telegram-connector/src/main/java/com/chat4all/connector/telegram/transformer/MessageTransformer.java` for Telegram Bot API format
-- [ ] T102 [P] [Connector] Implement webhook handler in `services/connectors/telegram-connector/src/main/java/com/chat4all/connector/telegram/api/WebhookController.java` for Telegram updates
-- [ ] T103 [P] [Connector] Create Telegram configuration in `services/connectors/telegram-connector/src/main/resources/application.yml` with bot token, API URL
-- [ ] T104 [P] [Connector] Implement credential validation in TelegramConnector.validateCredentials() using getMe API call
+- [x] T099 [P] [Connector] Create TelegramConnector in `services/connectors/telegram-connector/src/main/java/com/chat4all/connector/telegram/TelegramConnector.java` implementing MessageConnector interface
+- [x] T100 [P] [Connector] Implement TelegramBotClient in `services/connectors/telegram-connector/src/main/java/com/chat4all/connector/telegram/client/TelegramBotClient.java` using Spring WebClient
+- [x] T101 [P] [Connector] Create MessageTransformer in `services/connectors/telegram-connector/src/main/java/com/chat4all/connector/telegram/transformer/MessageTransformer.java` for Telegram Bot API format
+- [x] T102 [P] [Connector] Implement webhook handler in `services/connectors/telegram-connector/src/main/java/com/chat4all/connector/telegram/api/WebhookController.java` for Telegram updates
+- [x] T103 [P] [Connector] Create Telegram configuration in `services/connectors/telegram-connector/src/main/resources/application.yml` with bot token, API URL
+- [x] T104 [P] [Connector] Implement credential validation in TelegramConnector.validateCredentials() using getMe API call
 
 ### Instagram Connector
 
-- [ ] T105 [P] [Connector] Create InstagramConnector in `services/connectors/instagram-connector/src/main/java/com/chat4all/connector/instagram/InstagramConnector.java` implementing MessageConnector interface
-- [ ] T106 [P] [Connector] Implement InstagramApiClient in `services/connectors/instagram-connector/src/main/java/com/chat4all/connector/instagram/client/InstagramApiClient.java` using Spring WebClient
-- [ ] T107 [P] [Connector] Create MessageTransformer in `services/connectors/instagram-connector/src/main/java/com/chat4all/connector/instagram/transformer/MessageTransformer.java` for Instagram Messaging API format
-- [ ] T108 [P] [Connector] Implement webhook handler in `services/connectors/instagram-connector/src/main/java/com/chat4all/connector/instagram/api/WebhookController.java` for Instagram events
-- [ ] T109 [P] [Connector] Create Instagram configuration in `services/connectors/instagram-connector/src/main/resources/application.yml` with credentials, API URL
-- [ ] T110 [P] [Connector] Implement credential validation in InstagramConnector.validateCredentials() method
+- [x] T105 [P] [Connector] Create InstagramConnector in `services/connectors/instagram-connector/src/main/java/com/chat4all/connector/instagram/InstagramConnector.java` implementing MessageConnector interface
+- [x] T106 [P] [Connector] Implement InstagramApiClient in `services/connectors/instagram-connector/src/main/java/com/chat4all/connector/instagram/client/InstagramApiClient.java` using Spring WebClient
+- [x] T107 [P] [Connector] Create MessageTransformer in `services/connectors/instagram-connector/src/main/java/com/chat4all/connector/instagram/transformer/MessageTransformer.java` for Instagram Messaging API format
+- [x] T108 [P] [Connector] Implement webhook handler in `services/connectors/instagram-connector/src/main/java/com/chat4all/connector/instagram/api/WebhookController.java` for Instagram events
+- [x] T109 [P] [Connector] Create Instagram configuration in `services/connectors/instagram-connector/src/main/resources/application.yml` with credentials, API URL
+- [x] T110 [P] [Connector] Implement credential validation in InstagramConnector.validateCredentials() method
 
 **Checkpoint**: All three connectors implemented and independently deployable
 
@@ -307,7 +307,7 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T140 [P] Create API documentation using Springdoc OpenAPI in all services generating /v3/api-docs endpoint
+- [x] T140 [P] Create API documentation using Springdoc OpenAPI in all services generating /v3/api-docs endpoint
 - [ ] T141 [P] Add rate limiting to API Gateway using Redis-backed rate limiter in `services/api-gateway/src/main/java/com/chat4all/gateway/filter/RateLimitFilter.java`
 - [ ] T142 [P] Implement request/response logging filter in API Gateway at `services/api-gateway/src/main/java/com/chat4all/gateway/filter/LoggingFilter.java`
 - [ ] T143 [P] Create runbook in `docs/runbooks/message-delivery-failure.md` for troubleshooting failed deliveries
