@@ -149,7 +149,14 @@ resilience4j:
         max-attempts: 2
         wait-duration: 100ms
 
-# Topics Configuration
+# Application-Specific Kafka Topics Configuration
+app:
+  kafka:
+    topics:
+      chat-events: chat-events
+      status-updates: status-updates
+
+# Legacy Topics Configuration (for backward compatibility)
 kafka:
   topics:
     chat-events: chat-events

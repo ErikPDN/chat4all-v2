@@ -1,6 +1,7 @@
 package com.chat4all.message.config;
 
 import com.chat4all.message.websocket.MessageStatusWebSocketHandler;
+import com.chat4all.message.websocket.WebSocketChatHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,23 +14,39 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * WebSocket Configuration for Real-Time Message Status Updates
+ * WebSocket Configuration for Real-Time Communication
  * 
- * Enables WebSocket endpoint at /ws/messages for:
- * - Real-time message status updates (PENDING → SENT → DELIVERED → READ)
- * - Inbound message notifications (MESSAGE_RECEIVED events)
+ * Enables two WebSocket endpoints:
+ * 
+ * 1. /ws/messages - Message status updates (broadcast)
+ *    - Real-time message status updates (PENDING → SENT → DELIVERED → READ)
+ *    - Broadcast to all connected clients
+ * 
+ * 2. /ws/chat - Real-time chat message delivery (user-specific)
+ *    - MESSAGE_CREATED events (new messages in conversations)
+ *    - MESSAGE_RECEIVED events (inbound messages from external platforms)
+ *    - User-specific delivery based on recipientIds
+ *    - JWT authentication required
  * 
  * Architecture:
  * - Reactive WebSocket using Spring WebFlux
- * - Clients connect to /ws/messages
- * - Server broadcasts MESSAGE_RECEIVED and STATUS_UPDATED events
+ * - User-specific message queues for /ws/chat
+ * - Broadcast sink for /ws/messages
  * 
  * Example Client Usage (JavaScript):
  * ```javascript
- * const ws = new WebSocket('ws://localhost:8081/ws/messages');
- * ws.onmessage = (event) => {
+ * // Status updates (broadcast)
+ * const wsStatus = new WebSocket('ws://localhost:8081/ws/messages');
+ * wsStatus.onmessage = (event) => {
  *   const update = JSON.parse(event.data);
  *   console.log('Status update:', update);
+ * };
+ * 
+ * // Chat messages (user-specific, requires JWT)
+ * const wsChat = new WebSocket('ws://localhost:8081/ws/chat?token=YOUR_JWT_TOKEN');
+ * wsChat.onmessage = (event) => {
+ *   const message = JSON.parse(event.data);
+ *   console.log('New message:', message);
  * };
  * ```
  * 
@@ -41,9 +58,14 @@ import java.util.Map;
 public class WebSocketConfig {
 
     private final MessageStatusWebSocketHandler messageStatusWebSocketHandler;
+    private final WebSocketChatHandler webSocketChatHandler;
 
     /**
      * Maps WebSocket endpoints to handlers
+     * 
+     * Routes:
+     * - /ws/messages -> MessageStatusWebSocketHandler (status updates, broadcast)
+     * - /ws/chat -> WebSocketChatHandler (chat messages, user-specific)
      * 
      * @return HandlerMapping with WebSocket routes
      */
@@ -51,6 +73,7 @@ public class WebSocketConfig {
     public HandlerMapping webSocketHandlerMapping() {
         Map<String, WebSocketHandler> map = new HashMap<>();
         map.put("/ws/messages", messageStatusWebSocketHandler);
+        map.put("/ws/chat", webSocketChatHandler);
 
         SimpleUrlHandlerMapping handlerMapping = new SimpleUrlHandlerMapping();
         handlerMapping.setOrder(1);
