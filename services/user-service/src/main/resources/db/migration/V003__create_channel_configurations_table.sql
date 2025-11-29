@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- Create channel_configurations table
 CREATE TABLE channel_configurations (
     channel_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    platform platform_type_enum NOT NULL,
+    platform VARCHAR(20) NOT NULL,
     name VARCHAR(255) NOT NULL,
     credentials JSONB NOT NULL,
     webhook_url VARCHAR(500),
@@ -18,7 +18,8 @@ CREATE TABLE channel_configurations (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     
     -- Ensure unique channel names per platform
-    CONSTRAINT channel_configurations_name_unique UNIQUE (platform, name)
+    CONSTRAINT channel_configurations_name_unique UNIQUE (platform, name),
+    CONSTRAINT channel_configurations_platform_check CHECK (platform IN ('WHATSAPP', 'TELEGRAM', 'INSTAGRAM'))
 );
 
 -- Create indexes for performance

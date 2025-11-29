@@ -200,17 +200,17 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 ### Implementation for User Story 5
 
-- [ ] T081 [P] [US5] Create User entity in `services/user-service/src/main/java/com/chat4all/user/domain/User.java` with @Entity annotation for PostgreSQL (fields: userId UUID PK, displayName, userType ENUM, metadata JSONB)
-- [ ] T082 [P] [US5] Create ExternalIdentity entity in `services/user-service/src/main/java/com/chat4all/user/domain/ExternalIdentity.java` with @Entity annotation (fields: identityId, userId FK, platform, platformUserId, verified, linkedAt)
-- [ ] T083 [P] [US5] Create UserRepository in `services/user-service/src/main/java/com/chat4all/user/repository/UserRepository.java` extending JpaRepository
-- [ ] T084 [P] [US5] Create ExternalIdentityRepository in `services/user-service/src/main/java/com/chat4all/user/repository/ExternalIdentityRepository.java` extending JpaRepository with custom queries: findByPlatformAndPlatformUserId
-- [ ] T085 [US5] Implement UserService in `services/user-service/src/main/java/com/chat4all/user/service/UserService.java` with methods: createUser(), getUser(), updateUser()
-- [ ] T086 [US5] Implement IdentityMappingService in `services/user-service/src/main/java/com/chat4all/user/service/IdentityMappingService.java` with methods: linkIdentity(), unlinkIdentity(), suggestMatches()
-- [ ] T087 [US5] Create UserController in `services/user-service/src/main/java/com/chat4all/user/api/UserController.java` implementing POST /users, GET /users/{id}, GET /users endpoints
-- [ ] T088 [US5] Create IdentityController in `services/user-service/src/main/java/com/chat4all/user/api/IdentityController.java` implementing POST /users/{id}/identities, DELETE /users/{id}/identities/{identityId}
+- [x] T081 [P] [US5] Create User entity in `services/user-service/src/main/java/com/chat4all/user/domain/User.java` with @Entity annotation for PostgreSQL (fields: userId UUID PK, displayName, userType ENUM, metadata JSONB)
+- [x] T082 [P] [US5] Create ExternalIdentity entity in `services/user-service/src/main/java/com/chat4all/user/domain/ExternalIdentity.java` with @Entity annotation (fields: identityId, userId FK, platform, platformUserId, verified, linkedAt)
+- [x] T083 [P] [US5] Create UserRepository in `services/user-service/src/main/java/com/chat4all/user/repository/UserRepository.java` extending JpaRepository
+- [x] T084 [P] [US5] Create ExternalIdentityRepository in `services/user-service/src/main/java/com/chat4all/user/repository/ExternalIdentityRepository.java` extending JpaRepository with custom queries: findByPlatformAndPlatformUserId
+- [x] T085 [US5] Implement UserService in `services/user-service/src/main/java/com/chat4all/user/service/UserService.java` with methods: createUser(), getUser(), updateUser()
+- [x] T086 [US5] Implement IdentityMappingService in `services/user-service/src/main/java/com/chat4all/user/service/IdentityMappingService.java` with methods: linkIdentity(), unlinkIdentity(), suggestMatches()
+- [x] T087 [US5] Create UserController in `services/user-service/src/main/java/com/chat4all/user/api/UserController.java` implementing POST /users, GET /users/{id}, GET /users endpoints
+- [x] T088 [US5] Create IdentityController in `services/user-service/src/main/java/com/chat4all/user/api/IdentityController.java` implementing POST /users/{id}/identities, DELETE /users/{id}/identities/{identityId}
 - [ ] T089 [US5] Implement identity verification workflow in `services/user-service/src/main/java/com/chat4all/user/service/VerificationService.java` for high-security channels (FR-034)
 - [ ] T090 [US5] Create audit logging for identity operations in `services/user-service/src/main/java/com/chat4all/user/service/AuditService.java` writing to audit_logs table (FR-035)
-- [ ] T091 [US5] Add unique constraint on external_identities table (platform, platform_user_id) in Flyway migration V002
+- [x] T091 [US5] Add unique constraint on external_identities table (platform, platform_user_id) in Flyway migration V002
 - [ ] T092 [US5] Implement identity suggestion algorithm in IdentityMappingService.suggestMatches() comparing phone numbers, email addresses for potential matches
 
 **Checkpoint**: Identity mapping is complete - users can have unified profiles across multiple platforms
