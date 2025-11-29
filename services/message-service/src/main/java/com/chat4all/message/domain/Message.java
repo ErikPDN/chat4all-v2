@@ -1,6 +1,7 @@
 package com.chat4all.message.domain;
 
 import com.chat4all.common.constant.Channel;
+import com.chat4all.common.constant.ContentType;
 import com.chat4all.common.constant.MessageStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -92,10 +93,10 @@ public class Message {
 
     /**
      * Content type
-     * Enum: TEXT, FILE, IMAGE, VIDEO, AUDIO
+     * Enum: TEXT, IMAGE, VIDEO, AUDIO, DOCUMENT, etc.
      */
     @Field("content_type")
-    private String contentType;
+    private ContentType contentType;
 
     /**
      * File ID if content_type is not TEXT

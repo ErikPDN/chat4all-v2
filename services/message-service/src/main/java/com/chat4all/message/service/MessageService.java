@@ -1,5 +1,6 @@
 package com.chat4all.message.service;
 
+import com.chat4all.common.constant.ContentType;
 import com.chat4all.common.constant.MessageStatus;
 import com.chat4all.common.event.MessageEvent;
 import com.chat4all.message.domain.Message;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -53,8 +55,9 @@ public class MessageService {
      * 1. Check idempotency (prevent duplicates)
      * 2. Generate message ID if not provided
      * 3. Set initial status to PENDING
-     * 4. Persist to MongoDB
-     * 5. Publish MESSAGE_CREATED event to Kafka
+     * 4. Populate recipientIds from conversation participants (User Story 4)
+     * 5. Persist to MongoDB
+     * 6. Publish MESSAGE_CREATED event to Kafka
      * 
      * @param message Message to accept
      * @return Mono<Message> Persisted message with generated ID
@@ -78,39 +81,89 @@ public class MessageService {
                     return Mono.error(new IllegalStateException("Duplicate message: " + messageId));
                 }
 
-                // Set timestamps
-                Instant now = Instant.now();
-                if (message.getTimestamp() == null) {
-                    message.setTimestamp(now);
-                }
-                message.setCreatedAt(now);
-                message.setUpdatedAt(now);
+                // Populate recipientIds from conversation participants (Task T076/T077)
+                return populateRecipientIds(message)
+                    .flatMap(messageWithRecipients -> {
+                        // Set timestamps
+                        Instant now = Instant.now();
+                        if (messageWithRecipients.getTimestamp() == null) {
+                            messageWithRecipients.setTimestamp(now);
+                        }
+                        messageWithRecipients.setCreatedAt(now);
+                        messageWithRecipients.setUpdatedAt(now);
 
-                // Set initial status
-                if (message.getStatus() == null) {
-                    message.setStatus(MessageStatus.PENDING);
-                }
+                        // Set initial status
+                        if (messageWithRecipients.getStatus() == null) {
+                            messageWithRecipients.setStatus(MessageStatus.PENDING);
+                        }
 
-                // Initialize metadata if null
-                if (message.getMetadata() == null) {
-                    message.setMetadata(Message.MessageMetadata.builder()
-                        .retryCount(0)
-                        .build());
-                }
+                        // Initialize metadata if null
+                        if (messageWithRecipients.getMetadata() == null) {
+                            messageWithRecipients.setMetadata(Message.MessageMetadata.builder()
+                                .retryCount(0)
+                                .build());
+                        }
 
-                // Persist to MongoDB
-                return messageRepository.save(message)
-                    .doOnSuccess(savedMessage -> {
-                        log.info("Message accepted and persisted: {} (conversation: {})",
-                            savedMessage.getMessageId(), savedMessage.getConversationId());
+                        // Persist to MongoDB
+                        return messageRepository.save(messageWithRecipients)
+                            .doOnSuccess(savedMessage -> {
+                                log.info("Message accepted and persisted: {} (conversation: {}, recipients: {})",
+                                    savedMessage.getMessageId(), savedMessage.getConversationId(), 
+                                    savedMessage.getRecipientIds() != null ? savedMessage.getRecipientIds().size() : 0);
 
-                        // Publish MESSAGE_CREATED event to Kafka (fire-and-forget)
-                        publishMessageEvent(savedMessage, MessageEvent.EventType.MESSAGE_CREATED);
-                    })
-                    .doOnError(DuplicateKeyException.class, e ->
-                        log.error("Duplicate key error for message: {}", messageId, e)
-                    );
+                                // Publish MESSAGE_CREATED event to Kafka (fire-and-forget)
+                                publishMessageEvent(savedMessage, MessageEvent.EventType.MESSAGE_CREATED);
+                            })
+                            .doOnError(DuplicateKeyException.class, e ->
+                                log.error("Duplicate key error for message: {}", messageId, e)
+                            );
+                    });
             });
+    }
+
+    /**
+     * Populates recipientIds field based on conversation participants (User Story 4)
+     * 
+     * Business Rule:
+     * - recipientIds = all conversation participants EXCEPT the sender
+     * 
+     * For ONE_TO_ONE: 1 recipient (the other person)
+     * For GROUP: N-1 recipients (all participants except sender)
+     * 
+     * @param message Message to populate recipientIds for
+     * @return Mono<Message> Message with populated recipientIds
+     */
+    private Mono<Message> populateRecipientIds(Message message) {
+        // If recipientIds already set, skip
+        if (message.getRecipientIds() != null && !message.getRecipientIds().isEmpty()) {
+            log.debug("RecipientIds already populated for message: {}", message.getMessageId());
+            return Mono.just(message);
+        }
+
+        // If no conversation ID, cannot populate recipients
+        if (message.getConversationId() == null || message.getConversationId().trim().isEmpty()) {
+            log.warn("No conversationId for message: {}, skipping recipientIds population", message.getMessageId());
+            return Mono.just(message);
+        }
+
+        // Fetch conversation and extract participants
+        return conversationService.getConversation(message.getConversationId())
+            .map(conversation -> {
+                if (conversation.getParticipants() != null && !conversation.getParticipants().isEmpty()) {
+                    // Filter out the sender from participants list
+                    List<String> recipients = conversation.getParticipants().stream()
+                        .filter(participantId -> !participantId.equals(message.getSenderId()))
+                        .toList();
+
+                    message.setRecipientIds(recipients);
+                    log.debug("Populated {} recipients for message: {} in conversation: {}", 
+                        recipients.size(), message.getMessageId(), conversation.getConversationId());
+                } else {
+                    log.warn("No participants found in conversation: {}", conversation.getConversationId());
+                }
+                return message;
+            })
+            .defaultIfEmpty(message); // If conversation not found, return message as-is
     }
 
     /**
@@ -322,7 +375,7 @@ public class MessageService {
                                         .conversationId(conversationId)
                                         .senderId(senderId)
                                         .content(content)
-                                        .contentType("TEXT")
+                                        .contentType(ContentType.TEXT)
                                         .channel(channel)
                                         .status(MessageStatus.RECEIVED)
                                         .timestamp(timestamp != null ? timestamp : now)
@@ -363,7 +416,7 @@ public class MessageService {
                             .conversationId(conversationId)
                             .senderId(senderId)
                             .content(content)
-                            .contentType("TEXT")
+                            .contentType(ContentType.TEXT)
                             .channel(channel)
                             .status(MessageStatus.RECEIVED) // Inbound messages start as RECEIVED
                             .timestamp(timestamp != null ? timestamp : now)
@@ -409,6 +462,7 @@ public class MessageService {
                 .messageId(message.getMessageId())
                 .conversationId(message.getConversationId())
                 .senderId(message.getSenderId())
+                .recipientIds(message.getRecipientIds()) // User Story 4: Multi-recipient support
                 .content(message.getContent())
                 .contentType(message.getContentType())
                 .fileId(message.getFileId())

@@ -1,6 +1,7 @@
 package com.chat4all.common.model;
 
 import com.chat4all.common.constant.Channel;
+import com.chat4all.common.constant.ContentType;
 import com.chat4all.common.constant.MessageStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotBlank;
@@ -80,9 +81,9 @@ public class MessageDTO {
     private MessageStatus status = MessageStatus.PENDING;
 
     /**
-     * Content type (TEXT, FILE, IMAGE, VIDEO, AUDIO)
+     * Content type (TEXT, IMAGE, VIDEO, AUDIO, DOCUMENT, etc.)
      */
-    private String contentType;
+    private ContentType contentType;
 
     /**
      * File ID reference if content_type != TEXT

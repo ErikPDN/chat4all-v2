@@ -1,6 +1,7 @@
 package com.chat4all.message.repository;
 
 import com.chat4all.message.domain.Conversation;
+import com.chat4all.message.domain.ConversationType;
 import com.chat4all.common.constant.Channel;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.Query;
@@ -116,11 +117,11 @@ public interface ConversationRepository extends ReactiveMongoRepository<Conversa
     /**
      * Finds conversations by type (ONE_TO_ONE or GROUP)
      * 
-     * @param conversationType Conversation type
+     * @param type Conversation type
      * @param pageable Pagination parameters
      * @return Flux of conversations of the specified type
      */
-    Flux<Conversation> findByConversationType(String conversationType, Pageable pageable);
+    Flux<Conversation> findByType(ConversationType type, Pageable pageable);
 
     /**
      * Counts conversations for a user

@@ -1,6 +1,7 @@
 package com.chat4all.message.api.dto;
 
 import com.chat4all.common.constant.Channel;
+import com.chat4all.common.constant.ContentType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -64,10 +65,10 @@ public class SendMessageRequest {
     /**
      * Content type
      * Default: TEXT
-     * Enum: TEXT, FILE, IMAGE, VIDEO, AUDIO
+     * Enum: TEXT, IMAGE, VIDEO, AUDIO, DOCUMENT, etc.
      */
     @Builder.Default
-    private String contentType = "TEXT";
+    private ContentType contentType = ContentType.TEXT;
 
     /**
      * File ID if content type is not TEXT

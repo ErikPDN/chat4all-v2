@@ -148,30 +148,12 @@ db.createCollection('conversations', {
         },
         participants: {
           bsonType: 'array',
-          description: 'Array of conversation participants (2-100 users per FR-027)',
+          description: 'Array of conversation participant IDs (2-100 users per FR-027)',
           minItems: 2,
           maxItems: 100,
           items: {
-            bsonType: 'object',
-            required: ['user_id', 'user_type', 'joined_at'],
-            properties: {
-              user_id: {
-                bsonType: 'string',
-                description: 'User ID (references PostgreSQL users table)'
-              },
-              user_type: {
-                enum: ['AGENT', 'CUSTOMER'],
-                description: 'Type of user participant'
-              },
-              joined_at: {
-                bsonType: 'date',
-                description: 'When the user joined this conversation'
-              },
-              left_at: {
-                bsonType: ['date', 'null'],
-                description: 'When the user left this conversation (null if still active)'
-              }
-            }
+            bsonType: 'string',
+            description: 'Participant user ID'
           }
         },
         primary_channel: {

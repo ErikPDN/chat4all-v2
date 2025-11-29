@@ -180,13 +180,13 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 ### Implementation for User Story 4
 
-- [ ] T074 [P] [US4] Update Conversation entity to support conversationType ENUM (ONE_TO_ONE, GROUP) in `services/message-service/src/main/java/com/chat4all/message/domain/Conversation.java`
-- [ ] T075 [P] [US4] Add participants field (List<String> userIds) to Conversation entity with validation (max 100 participants per FR-027)
-- [ ] T076 [US4] Create ConversationController endpoint POST /conversations in `services/message-service/src/main/java/com/chat4all/message/api/ConversationController.java` accepting CreateConversationRequest
-- [ ] T077 [US4] Implement ConversationService.createConversation() method in `services/message-service/src/main/java/com/chat4all/message/service/ConversationService.java` validating participants exist
-- [ ] T078 [US4] Update RoutingHandler to support multi-recipient delivery in `services/router-service/src/main/java/com/chat4all/router/handler/RoutingHandler.java` iterating over conversation.participants
-- [ ] T079 [US4] Implement ParticipantManager in `services/message-service/src/main/java/com/chat4all/message/service/ParticipantManager.java` with methods: addParticipant(), removeParticipant(), getConversationHistory()
-- [ ] T080 [US4] Add business logic: new participants see history from join point forward (not earlier messages) in ParticipantManager
+- [X] T074 [P] [US4] Update Conversation entity to support conversationType ENUM (ONE_TO_ONE, GROUP) in `services/message-service/src/main/java/com/chat4all/message/domain/Conversation.java`
+- [X] T075 [P] [US4] Add participants field (List<String> userIds) to Conversation entity with validation (max 100 participants per FR-027)
+- [X] T076 [US4] Create ConversationController endpoint POST /conversations in `services/message-service/src/main/java/com/chat4all/message/api/ConversationController.java` accepting CreateConversationRequest
+- [X] T077 [US4] Implement ConversationService.createConversation() method in `services/message-service/src/main/java/com/chat4all/message/service/ConversationService.java` validating participants exist
+- [X] T078 [US4] Update RoutingHandler to support multi-recipient delivery in `services/router-service/src/main/java/com/chat4all/router/handler/RoutingHandler.java` iterating over conversation.participants
+- [X] T079 [US4] Implement ParticipantManager in `services/message-service/src/main/java/com/chat4all/message/service/ParticipantManager.java` with methods: addParticipant(), removeParticipant(), getConversationHistory()
+- [X] T080 [US4] Add business logic: new participants see history from join point forward (not earlier messages) in ParticipantManager
 
 **Checkpoint**: Group conversations are fully functional - multi-party messaging works end-to-end
 

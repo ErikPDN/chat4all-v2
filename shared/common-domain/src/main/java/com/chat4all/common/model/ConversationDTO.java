@@ -54,10 +54,30 @@ public class ConversationDTO {
     private List<ParticipantDTO> participants;
 
     /**
+     * Simple list of participant IDs (alternative to detailed participants)
+     * For simple use cases where only IDs are needed (e.g., group messaging)
+     */
+    @Size(max = 100, message = "Maximum 100 participants allowed")
+    private List<String> participantIds;
+
+    /**
+     * Current number of participants in the conversation
+     * Useful for displaying participant count in UI without loading full participant list
+     * Task: T079
+     */
+    private Integer participantCount;
+
+    /**
      * Primary channel for this conversation
      */
     @NotNull(message = "Primary channel cannot be null")
     private Channel primaryChannel;
+
+    /**
+     * Optional conversation title (for groups)
+     * Required for GROUP conversations, optional for ONE_TO_ONE
+     */
+    private String title;
 
     /**
      * Conversation creation timestamp

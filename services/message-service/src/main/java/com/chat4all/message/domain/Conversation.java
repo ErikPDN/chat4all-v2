@@ -1,6 +1,7 @@
 package com.chat4all.message.domain;
 
 import com.chat4all.common.constant.Channel;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,6 +14,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -55,17 +57,54 @@ public class Conversation {
     private String conversationId;
 
     /**
-     * Conversation type
-     * Enum: '1:1' or 'GROUP'
+     * Conversation type (ONE_TO_ONE or GROUP)
+     * Default: ONE_TO_ONE
+     * 
+     * Task: T074
      */
     @Field("conversation_type")
-    private String conversationType;
+    @Builder.Default
+    private ConversationType type = ConversationType.ONE_TO_ONE;
 
     /**
-     * List of conversation participants
-     * Minimum 2, maximum 100 participants (FR-027)
+     * List of participant IDs (user IDs or phone numbers)
+     * Maximum 100 participants per FR-027
+     * 
+     * For ONE_TO_ONE: exactly 2 participants
+     * For GROUP: 3-100 participants
+     * 
+     * Task: T075
      */
-    private List<Participant> participants;
+    @Field("participants")
+    @Size(max = 100, message = "Maximum 100 participants allowed per conversation")
+    private List<String> participants;
+
+    /**
+     * Map of participant join timestamps
+     * Key: userId, Value: join timestamp
+     * 
+     * Used for Task T080: History visibility based on join date
+     * - New participants only see messages from their join point forward
+     * - Filters message history per participant
+     * 
+     * Synchronized with 'participants' list:
+     * - addParticipant() adds to both
+     * - removeParticipant() removes from both
+     * 
+     * Task: T080
+     */
+    @Field("participant_join_dates")
+    @Builder.Default
+    private Map<String, Instant> participantJoinDates = new HashMap<>();
+
+    /**
+     * Detailed participant information (legacy nested structure)
+     * Use 'participants' field for simple ID list
+     * @deprecated Use {@link #participants} instead for simple ID list
+     */
+    @Deprecated
+    @Field("participants_detailed")
+    private List<Participant> participantsDetailed;
 
     /**
      * Primary platform channel for this conversation

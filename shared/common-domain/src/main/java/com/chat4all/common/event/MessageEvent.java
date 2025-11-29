@@ -1,6 +1,7 @@
 package com.chat4all.common.event;
 
 import com.chat4all.common.constant.Channel;
+import com.chat4all.common.constant.ContentType;
 import com.chat4all.common.constant.MessageStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.NotNull;
@@ -10,6 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -66,15 +68,22 @@ public class MessageEvent {
     private String senderId;
 
     /**
+     * List of recipient IDs for multi-recipient delivery (User Story 4)
+     * For ONE_TO_ONE: single recipient
+     * For GROUP: multiple recipients (excluding sender)
+     */
+    private List<String> recipientIds;
+
+    /**
      * Message content (text)
      * Max 10,000 characters
      */
     private String content;
 
     /**
-     * Content type (TEXT, FILE, IMAGE, VIDEO, AUDIO)
+     * Content type (TEXT, IMAGE, VIDEO, AUDIO, DOCUMENT, etc.)
      */
-    private String contentType;
+    private ContentType contentType;
 
     /**
      * File ID reference if content_type != TEXT
