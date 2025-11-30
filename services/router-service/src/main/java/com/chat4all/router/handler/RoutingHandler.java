@@ -9,11 +9,12 @@ import com.chat4all.router.dto.ExternalIdentityDTO;
 import com.chat4all.router.dto.UserDTO;
 import com.chat4all.router.kafka.StatusUpdateProducer;
 import com.chat4all.router.retry.RetryHandler;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -52,6 +53,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * 4. Update message status based on delivery result (partial or full success)
  * 5. Publish status update to Kafka
  * 
+ * Metrics (T113):
+ * - messages.routed.total: Counter for routed messages (tagged by destination_channel)
+ * - messages.routed.failure: Counter for routing failures (tagged by error_type)
+ * 
  * @author Chat4All Team
  * @version 2.0.0
  */
@@ -64,6 +69,7 @@ public class RoutingHandler {
     private final ConnectorClient connectorClient;
     private final StatusUpdateProducer statusUpdateProducer;
     private final UserServiceClient userServiceClient;
+    private final MeterRegistry meterRegistry;
 
     // Connector URLs (in production, these would come from service discovery or config)
     private static final String WHATSAPP_CONNECTOR_URL = "http://localhost:8091";
@@ -162,16 +168,43 @@ public class RoutingHandler {
                     successCount.incrementAndGet();
                     log.info("✓ Delivery succeeded for recipient: {} (message: {})", 
                         recipientId, messageEvent.getMessageId());
+                    
+                    // Metric: Count successful routing (T113)
+                    Counter.builder("messages.routed.total")
+                        .tag("destination_channel", messageEvent.getChannel() != null ? 
+                            messageEvent.getChannel().name() : "UNKNOWN")
+                        .description("Total number of messages successfully routed to connectors")
+                        .register(meterRegistry)
+                        .increment();
                 } else {
                     failureCount.incrementAndGet();
                     log.error("✗ Delivery failed for recipient: {} (message: {})", 
                         recipientId, messageEvent.getMessageId());
+                    
+                    // Metric: Count routing failures (T113)
+                    Counter.builder("messages.routed.failure")
+                        .tag("error_type", "delivery_failed")
+                        .tag("destination_channel", messageEvent.getChannel() != null ? 
+                            messageEvent.getChannel().name() : "UNKNOWN")
+                        .description("Total number of routing failures")
+                        .register(meterRegistry)
+                        .increment();
                 }
 
             } catch (Exception e) {
                 failureCount.incrementAndGet();
                 log.error("✗ Exception delivering to recipient: {} (message: {}): {}", 
                     recipientId, messageEvent.getMessageId(), e.getMessage(), e);
+                
+                // Metric: Count routing exceptions (T113)
+                Counter.builder("messages.routed.failure")
+                    .tag("error_type", "exception")
+                    .tag("destination_channel", messageEvent.getChannel() != null ? 
+                        messageEvent.getChannel().name() : "UNKNOWN")
+                    .description("Total number of routing failures")
+                    .register(meterRegistry)
+                    .increment();
+                
                 // Continue with next recipient - don't let one failure block others
             }
         }
@@ -221,10 +254,27 @@ public class RoutingHandler {
             log.info("Message successfully delivered: messageId={}, channel={}", 
                     messageEvent.getMessageId(), messageEvent.getChannel());
             updateMessageStatus(messageEvent, MessageStatus.DELIVERED);
+            
+            // Metric: Count successful routing (T113)
+            Counter.builder("messages.routed.total")
+                .tag("destination_channel", messageEvent.getChannel() != null ? 
+                    messageEvent.getChannel().name() : "UNKNOWN")
+                .description("Total number of messages successfully routed to connectors")
+                .register(meterRegistry)
+                .increment();
         } else {
             log.error("Message delivery failed after retries: messageId={}, channel={}", 
                     messageEvent.getMessageId(), messageEvent.getChannel());
             updateMessageStatus(messageEvent, MessageStatus.FAILED);
+            
+            // Metric: Count routing failures (T113)
+            Counter.builder("messages.routed.failure")
+                .tag("error_type", "delivery_failed")
+                .tag("destination_channel", messageEvent.getChannel() != null ? 
+                    messageEvent.getChannel().name() : "UNKNOWN")
+                .description("Total number of routing failures")
+                .register(meterRegistry)
+                .increment();
         }
     }
 

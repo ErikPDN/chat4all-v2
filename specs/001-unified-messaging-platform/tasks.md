@@ -257,8 +257,8 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 **Goal**: Implement full-stack observability per constitutional Principle VI
 
 - [X] T111 [P] Configure Logback JSON encoder in all services at `src/main/resources/logback-spring.xml` using shared/observability library
-- [ ] T112 [P] Add Micrometer metrics to MessageController (message.send.count, message.send.latency) in `services/message-service/`
-- [ ] T113 [P] Add Micrometer metrics to RouterService (message.route.count, message.delivery.latency, message.retry.count) in `services/router-service/`
+- [X] T112 [P] Add Micrometer metrics to MessageController (message.send.count, message.send.latency) in `services/message-service/`
+- [X] T113 [P] Add Micrometer metrics to RouterService (message.route.count, message.delivery.latency, message.retry.count) in `services/router-service/`
 - [ ] T114 [P] Configure OpenTelemetry Java Agent in Dockerfile for all services with OTLP exporter to Jaeger
 - [ ] T115 [P] Create Prometheus scrape configuration in `infrastructure/prometheus/prometheus.yml` targeting all services' /actuator/prometheus endpoints
 - [ ] T116 [P] Create Grafana dashboards in `infrastructure/grafana/dashboards/` for: Message Throughput, Delivery Latency, Error Rates, System Health

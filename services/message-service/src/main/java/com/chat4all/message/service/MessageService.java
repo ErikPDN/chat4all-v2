@@ -9,6 +9,9 @@ import com.chat4all.message.kafka.MessageProducer;
 import com.chat4all.message.repository.MessageRepository;
 import com.chat4all.message.repository.MessageStatusHistoryRepository;
 import com.chat4all.message.websocket.MessageStatusWebSocketHandler;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DuplicateKeyException;
@@ -31,6 +34,10 @@ import java.util.UUID;
  * 3. Event publishing (to Kafka)
  * 4. Status management (PENDING → SENT → DELIVERED → READ)
  * 
+ * Metrics (T112):
+ * - messages.processed.success: Counter for successfully processed messages
+ * - messages.processing.time: Timer for message processing latency
+ * 
  * @author Chat4All Team
  * @version 1.0.0
  */
@@ -45,6 +52,7 @@ public class MessageService {
     private final MessageProducer messageProducer;
     private final ConversationService conversationService;
     private final MessageStatusWebSocketHandler webSocketHandler;
+    private final MeterRegistry meterRegistry;
 
     /**
      * Accepts a new message for processing (reactive).
@@ -52,18 +60,23 @@ public class MessageService {
      * This is the main entry point for outbound messages from the API.
      * 
      * Flow:
-     * 1. Check idempotency (prevent duplicates)
-     * 2. Generate message ID if not provided
-     * 3. Set initial status to PENDING
-     * 4. Populate recipientIds from conversation participants (User Story 4)
-     * 5. Persist to MongoDB
-     * 6. Publish MESSAGE_CREATED event to Kafka
+     * 1. Start processing timer (metrics)
+     * 2. Check idempotency (prevent duplicates)
+     * 3. Generate message ID if not provided
+     * 4. Set initial status to PENDING
+     * 5. Populate recipientIds from conversation participants (User Story 4)
+     * 6. Persist to MongoDB
+     * 7. Publish MESSAGE_CREATED event to Kafka
+     * 8. Record processing time and success metrics
      * 
      * @param message Message to accept
      * @return Mono<Message> Persisted message with generated ID
      * @throws IllegalStateException if message is a duplicate
      */
     public Mono<Message> acceptMessage(Message message) {
+        // Start timer for message processing latency (T112)
+        Timer.Sample sample = Timer.start(meterRegistry);
+
         // Generate message ID if not provided (handles null or blank)
         if (message.getMessageId() == null || message.getMessageId().trim().isEmpty()) {
             String generatedId = UUID.randomUUID().toString();
@@ -113,6 +126,17 @@ public class MessageService {
 
                                 // Publish MESSAGE_CREATED event to Kafka (fire-and-forget)
                                 publishMessageEvent(savedMessage, MessageEvent.EventType.MESSAGE_CREATED);
+
+                                // Metric: Record processing time (T112)
+                                sample.stop(Timer.builder("messages.processing.time")
+                                    .description("Time taken to process a message from receipt to Kafka publish")
+                                    .register(meterRegistry));
+
+                                // Metric: Count successfully processed messages (T112)
+                                Counter.builder("messages.processed.success")
+                                    .description("Total number of messages successfully processed")
+                                    .register(meterRegistry)
+                                    .increment();
                             })
                             .doOnError(DuplicateKeyException.class, e ->
                                 log.error("Duplicate key error for message: {}", messageId, e)

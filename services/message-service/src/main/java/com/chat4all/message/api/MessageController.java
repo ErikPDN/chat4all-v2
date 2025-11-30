@@ -4,6 +4,8 @@ import com.chat4all.message.api.dto.SendMessageRequest;
 import com.chat4all.message.api.dto.SendMessageResponse;
 import com.chat4all.message.domain.Message;
 import com.chat4all.message.service.MessageService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,9 @@ import java.time.Instant;
  * 
  * Security: Protected by API Gateway OAuth2 (scope: messages:write)
  * 
+ * Metrics (T112):
+ * - messages.inbound.total: Counter for incoming messages (tagged by channel)
+ * 
  * @author Chat4All Team
  * @version 1.0.0
  */
@@ -33,6 +38,7 @@ import java.time.Instant;
 public class MessageController {
 
     private final MessageService messageService;
+    private final MeterRegistry meterRegistry;
 
     /**
      * Accepts a new message for processing (reactive).
@@ -42,9 +48,10 @@ public class MessageController {
      * 
      * Flow:
      * 1. Validate request (via @Valid)
-     * 2. Convert DTO to Message entity
-     * 3. Call MessageService.acceptMessage()
-     * 4. Return 202 with message ID and status URL
+     * 2. Increment inbound message counter (metrics)
+     * 3. Convert DTO to Message entity
+     * 4. Call MessageService.acceptMessage()
+     * 5. Return 202 with message ID and status URL
      * 
      * The message is persisted to MongoDB and published to Kafka.
      * Actual delivery happens asynchronously via Router Service.
@@ -56,6 +63,13 @@ public class MessageController {
     public Mono<ResponseEntity<SendMessageResponse>> sendMessage(@Valid @RequestBody SendMessageRequest request) {
         log.info("Received message send request: conversationId={}, senderId={}, channel={}",
             request.getConversationId(), request.getSenderId(), request.getChannel());
+
+        // Metric: Count inbound messages by channel (T112)
+        Counter.builder("messages.inbound.total")
+            .tag("channel", request.getChannel() != null ? request.getChannel().name() : "UNKNOWN")
+            .description("Total number of inbound messages received")
+            .register(meterRegistry)
+            .increment();
 
         // Convert DTO to Message entity
         Message message = Message.builder()
