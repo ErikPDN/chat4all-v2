@@ -71,6 +71,10 @@ management:
         enabled: true
     tags:
       application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        messages: true  # Habilita histograma para métricas começando com 'messages'
+        http: true      # Habilita para requisições HTTP
 
 # Resilience4j Configuration
 resilience4j:
