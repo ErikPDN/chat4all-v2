@@ -102,7 +102,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(messages_inbound_total[10s])",
+          "expr": "rate(messages_inbound_total[1m])",
           "legendFormat": "{{channel}}",
           "range": true,
           "refId": "A"
@@ -191,7 +191,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(messages_routed_total[10s])",
+          "expr": "rate(messages_routed_total[1m])",
           "legendFormat": "{{destination_channel}}",
           "range": true,
           "refId": "A"
@@ -288,7 +288,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, rate(messages_processing_time_bucket[10s]))",
+          "expr": "histogram_quantile(0.95, rate(messages_processing_time_bucket[1m]))",
           "legendFormat": "P95",
           "range": true,
           "refId": "A"
@@ -299,7 +299,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, rate(messages_processing_time_bucket[10s]))",
+          "expr": "histogram_quantile(0.99, rate(messages_processing_time_bucket[1m]))",
           "legendFormat": "P99",
           "range": true,
           "refId": "B",
@@ -311,7 +311,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, rate(messages_processing_time_bucket[10s]))",
+          "expr": "histogram_quantile(0.50, rate(messages_processing_time_bucket[1m]))",
           "legendFormat": "P50 (median)",
           "range": true,
           "refId": "C",
@@ -405,7 +405,7 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(messages_routed_failure[10s])",
+          "expr": "rate(messages_routed_failure[1m])",
           "legendFormat": "{{error_type}} - {{destination_channel}}",
           "range": true,
           "refId": "A"
