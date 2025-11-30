@@ -290,7 +290,7 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 - [ ] T131 [P] Create ArgoCD Application manifest in `infrastructure/argocd/application.yaml` for automated GitOps deployment
 - [ ] T132 [P] Add integration test stage to `.github/workflows/test.yml` using Testcontainers with PostgreSQL, MongoDB, Kafka, Redis
-- [ ] T133 [P] Add Docker image build and push to GitHub Container Registry in `.github/workflows/build.yml`
+- [X] T133 [P] Add Docker image build and push to GitHub Container Registry in `.github/workflows/build.yml`
 - [ ] T134 [P] Create deployment workflow `.github/workflows/deploy.yml` with manual approval for production, auto-deploy to dev/staging
 - [ ] T135 Configure canary deployment in `infrastructure/kubernetes/overlays/production/rollout.yaml` using Argo Rollouts (10% → 50% → 100%)
 
