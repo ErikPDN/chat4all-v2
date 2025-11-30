@@ -407,7 +407,16 @@ public class RoutingHandler {
         
         try {
             boolean success = connectorClient.deliverMessage(messageEvent, connectorUrl);
-            log.info(">>> DIRECT DELIVERY {} <<<", success ? "SUCCEEDED" : "FAILED");
+            
+            // Record metrics for successful delivery
+            if (success) {
+                meterRegistry.counter("messages.routed.total",
+                    "destination_channel", messageEvent.getChannel().name()).increment();
+                log.info(">>> DIRECT DELIVERY SUCCEEDED - Metric recorded <<<");
+            } else {
+                log.info(">>> DIRECT DELIVERY FAILED <<<");
+            }
+            
             return success;
         } catch (Exception e) {
             log.error(">>> DIRECT DELIVERY FAILED: {} <<<", e.getMessage());
