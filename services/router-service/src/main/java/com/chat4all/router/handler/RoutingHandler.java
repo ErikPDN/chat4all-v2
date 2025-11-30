@@ -308,6 +308,11 @@ public class RoutingHandler {
         } catch (Exception e) {
             log.error(">>> DELIVERY FAILED FOR RECIPIENT: {} - ERROR: {} <<<", 
                 recipientId, e.getMessage());
+            // CRITICAL: Register failure metric BEFORE re-throwing
+            meterRegistry.counter("messages.routed.failure",
+                "destination_channel", messageEvent.getChannel() != null ? 
+                    messageEvent.getChannel().name() : "UNKNOWN",
+                "error_type", e.getClass().getSimpleName()).increment();
             throw new RuntimeException("Connector delivery failed for recipient: " + recipientId, e);
         }
     }
@@ -415,11 +420,19 @@ public class RoutingHandler {
                 log.info(">>> DIRECT DELIVERY SUCCEEDED - Metric recorded <<<");
             } else {
                 log.info(">>> DIRECT DELIVERY FAILED <<<");
+                // CRITICAL: Register failure metric before returning
+                meterRegistry.counter("messages.routed.failure",
+                    "destination_channel", messageEvent.getChannel().name(),
+                    "error_type", "delivery_failed").increment();
             }
             
             return success;
         } catch (Exception e) {
             log.error(">>> DIRECT DELIVERY FAILED: {} <<<", e.getMessage());
+            // CRITICAL: Register failure metric BEFORE re-throwing
+            meterRegistry.counter("messages.routed.failure",
+                "destination_channel", messageEvent.getChannel().name(),
+                "error_type", e.getClass().getSimpleName()).increment();
             throw new RuntimeException("Direct connector delivery failed", e);
         }
     }
@@ -488,10 +501,24 @@ public class RoutingHandler {
             boolean success = connectorClient.deliverMessage(messageEvent, connectorUrl);
             
             log.info(">>> DELIVERY {} <<<", success ? "SUCCEEDED" : "FAILED");
+            
+            // CRITICAL: Register failure metric if delivery failed
+            if (!success) {
+                meterRegistry.counter("messages.routed.failure",
+                    "destination_channel", messageEvent.getChannel() != null ? 
+                        messageEvent.getChannel().name() : "UNKNOWN",
+                    "error_type", "delivery_failed").increment();
+            }
+            
             return success;
             
         } catch (Exception e) {
             log.error(">>> DELIVERY FAILED WITH ERROR: {} <<<", e.getMessage());
+            // CRITICAL: Register failure metric BEFORE re-throwing
+            meterRegistry.counter("messages.routed.failure",
+                "destination_channel", messageEvent.getChannel() != null ? 
+                    messageEvent.getChannel().name() : "UNKNOWN",
+                "error_type", e.getClass().getSimpleName()).increment();
             throw new RuntimeException("Connector delivery failed", e);
         }
     }
