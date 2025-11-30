@@ -5,6 +5,9 @@ kind: Kustomization
 # Usage: kubectl apply -k infrastructure/kubernetes/base/
 
 resources:
+  # Third-Party Infrastructure (Databases, Brokers, Storage)
+  - third-party/
+  
   # Core Services
   - api-gateway/
   - message-service/
