@@ -281,8 +281,8 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 - [X] T124 [P] Create Kustomize base for whatsapp-connector in `infrastructure/kubernetes/base/connectors/whatsapp/` with Deployment, Service
 - [X] T125 [P] Create Kustomize base for telegram-connector in `infrastructure/kubernetes/base/connectors/telegram/` with Deployment, Service
 - [X] T126 [P] Create Kustomize base for instagram-connector in `infrastructure/kubernetes/base/connectors/instagram/` with Deployment, Service
-- [ ] T127 [P] Create Kustomize overlays for dev environment in `infrastructure/kubernetes/overlays/dev/` with reduced replicas, resource limits
-- [ ] T128 [P] Create Kustomize overlays for production in `infrastructure/kubernetes/overlays/production/` with HPA (Horizontal Pod Autoscaler), PodDisruptionBudget, increased resources
+- [X] T127 [P] Create Kustomize overlays for dev environment in `infrastructure/kubernetes/overlays/dev/` with reduced replicas, resource limits
+- [X] T128 [P] Create Kustomize overlays for production in `infrastructure/kubernetes/overlays/production/` with HPA (Horizontal Pod Autoscaler), PodDisruptionBudget, increased resources
 - [ ] T129 Create Ingress configuration in `infrastructure/kubernetes/base/ingress.yaml` routing traffic to api-gateway
 - [ ] T130 Create NetworkPolicy in `infrastructure/kubernetes/base/network-policies/` restricting inter-service communication
 
