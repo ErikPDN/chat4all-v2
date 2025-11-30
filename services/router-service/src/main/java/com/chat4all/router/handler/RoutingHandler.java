@@ -3,7 +3,10 @@ package com.chat4all.router.handler;
 import com.chat4all.common.constant.Channel;
 import com.chat4all.common.constant.MessageStatus;
 import com.chat4all.common.event.MessageEvent;
+import com.chat4all.router.client.UserServiceClient;
 import com.chat4all.router.connector.ConnectorClient;
+import com.chat4all.router.dto.ExternalIdentityDTO;
+import com.chat4all.router.dto.UserDTO;
 import com.chat4all.router.kafka.StatusUpdateProducer;
 import com.chat4all.router.retry.RetryHandler;
 import lombok.RequiredArgsConstructor;
@@ -25,11 +28,22 @@ import java.util.concurrent.atomic.AtomicInteger;
  * - Routes message to appropriate connector for each recipient
  * - Handles partial failures (one recipient fails, others succeed)
  * 
+ * User Story 5: Identity Resolution Integration
+ * - Resolves internal user IDs to external platform identities
+ * - Fan-out to multiple platforms for single user (WhatsApp + Telegram + Instagram)
+ * - Handles UUID-based recipient IDs vs direct platform IDs
+ * 
  * Routing Logic:
  * - WHATSAPP → WhatsApp Connector
  * - TELEGRAM → Telegram Connector
  * - INSTAGRAM → Instagram Connector
  * - INTERNAL → Skip external delivery (internal messages only)
+ * 
+ * Identity Resolution Flow:
+ * 1. Check if recipientId is a UUID (internal user) or platform ID (direct)
+ * 2. If UUID: Call User Service to resolve external identities
+ * 3. Fan-out message to all linked platform identities
+ * 4. If direct platform ID: Send directly to specified platform
  * 
  * Flow:
  * 1. Check if message is for multiple recipients (GROUP conversation)
@@ -49,6 +63,7 @@ public class RoutingHandler {
     private final RetryHandler retryHandler;
     private final ConnectorClient connectorClient;
     private final StatusUpdateProducer statusUpdateProducer;
+    private final UserServiceClient userServiceClient;
 
     // Connector URLs (in production, these would come from service discovery or config)
     private static final String WHATSAPP_CONNECTOR_URL = "http://localhost:8091";
@@ -216,10 +231,16 @@ public class RoutingHandler {
     /**
      * Delivers a message to a specific recipient.
      * 
+     * Identity Resolution Logic:
+     * - If recipientId is a UUID: Resolve to external identities via User Service
+     *   → Fan-out to all linked platforms (WhatsApp + Telegram + Instagram)
+     * - If recipientId is not a UUID: Treat as direct platform ID
+     *   → Send directly to the specified channel
+     * 
      * @param messageEvent The message to deliver
-     * @param recipientId The specific recipient ID
+     * @param recipientId The specific recipient ID (either internal UUID or platform ID)
      * @param connectorUrl The connector service URL
-     * @return true if delivery succeeded
+     * @return true if delivery succeeded to at least one identity
      */
     private boolean deliverToRecipient(MessageEvent messageEvent, String recipientId, String connectorUrl) {
         log.info(">>> DELIVERING TO RECIPIENT <<<");
@@ -229,19 +250,141 @@ public class RoutingHandler {
         log.info("    Connector URL: {}", connectorUrl);
 
         try {
-            // Make actual HTTP call to connector
-            // Pass recipientId context for connector to handle
-            boolean success = connectorClient.deliverMessage(messageEvent, connectorUrl);
-            
-            log.info(">>> DELIVERY {} FOR RECIPIENT: {} <<<", 
-                success ? "SUCCEEDED" : "FAILED", recipientId);
-            return success;
+            // Check if recipientId is a UUID (internal user ID)
+            if (isUUID(recipientId)) {
+                log.info("Recipient ID is UUID - resolving to external identities via User Service");
+                return deliverToInternalUser(messageEvent, recipientId);
+            } else {
+                // Direct platform ID - send directly
+                log.info("Recipient ID is direct platform ID - delivering directly");
+                return deliverDirectly(messageEvent, recipientId, connectorUrl);
+            }
             
         } catch (Exception e) {
             log.error(">>> DELIVERY FAILED FOR RECIPIENT: {} - ERROR: {} <<<", 
                 recipientId, e.getMessage());
             throw new RuntimeException("Connector delivery failed for recipient: " + recipientId, e);
         }
+    }
+
+    /**
+     * Delivers a message to an internal user by resolving their external identities.
+     * 
+     * Fan-out Strategy:
+     * - Resolves user UUID to all linked platform identities
+     * - Delivers to ALL identities (multi-platform delivery)
+     * - Returns success if AT LEAST ONE identity delivery succeeds
+     * 
+     * @param messageEvent The message to deliver
+     * @param userId Internal user UUID
+     * @return true if at least one platform delivery succeeded
+     */
+    private boolean deliverToInternalUser(MessageEvent messageEvent, String userId) {
+        log.info("Resolving internal user to external identities: userId={}", userId);
+        
+        try {
+            // Call User Service to get external identities
+            UserDTO user = userServiceClient.getUser(userId).block();
+            
+            if (user == null) {
+                log.warn("User not found in User Service: userId={}", userId);
+                return false;
+            }
+            
+            List<ExternalIdentityDTO> identities = user.getExternalIdentities();
+            
+            if (identities == null || identities.isEmpty()) {
+                log.warn("User has no linked external identities: userId={}, displayName={}", 
+                    userId, user.getDisplayName());
+                return false;
+            }
+            
+            log.info("User has {} linked identities - fanning out message", identities.size());
+            
+            // Fan-out to all external identities
+            AtomicInteger successCount = new AtomicInteger(0);
+            AtomicInteger failureCount = new AtomicInteger(0);
+            
+            for (ExternalIdentityDTO identity : identities) {
+                try {
+                    log.info("Delivering to identity: platform={}, platformUserId={}", 
+                        identity.getPlatform(), identity.getPlatformUserId());
+                    
+                    // Get connector URL for this platform
+                    String connectorUrl = getConnectorUrl(identity.getPlatform());
+                    
+                    if (connectorUrl == null) {
+                        log.warn("No connector for platform: {}, skipping", identity.getPlatform());
+                        continue;
+                    }
+                    
+                    // Deliver to this specific platform identity
+                    boolean delivered = deliverDirectly(messageEvent, identity.getPlatformUserId(), connectorUrl);
+                    
+                    if (delivered) {
+                        successCount.incrementAndGet();
+                        log.info("✓ Delivered to {}: {}", identity.getPlatform(), identity.getPlatformUserId());
+                    } else {
+                        failureCount.incrementAndGet();
+                        log.error("✗ Failed to deliver to {}: {}", identity.getPlatform(), identity.getPlatformUserId());
+                    }
+                    
+                } catch (Exception e) {
+                    failureCount.incrementAndGet();
+                    log.error("✗ Exception delivering to {}: {} - {}", 
+                        identity.getPlatform(), identity.getPlatformUserId(), e.getMessage());
+                    // Continue with other identities
+                }
+            }
+            
+            log.info("Identity fan-out completed: userId={}, total={}, success={}, failed={}", 
+                userId, identities.size(), successCount.get(), failureCount.get());
+            
+            // Success if at least one identity delivery succeeded
+            return successCount.get() > 0;
+            
+        } catch (Exception e) {
+            log.error("Error resolving user identities: userId={}, error={}", userId, e.getMessage(), e);
+            return false;
+        }
+    }
+
+    /**
+     * Delivers a message directly to a platform-specific ID.
+     * 
+     * @param messageEvent The message to deliver
+     * @param platformUserId The platform-specific user ID
+     * @param connectorUrl The connector URL
+     * @return true if delivery succeeded
+     */
+    private boolean deliverDirectly(MessageEvent messageEvent, String platformUserId, String connectorUrl) {
+        log.debug("Direct delivery: platformUserId={}, connectorUrl={}", platformUserId, connectorUrl);
+        
+        try {
+            boolean success = connectorClient.deliverMessage(messageEvent, connectorUrl);
+            log.info(">>> DIRECT DELIVERY {} <<<", success ? "SUCCEEDED" : "FAILED");
+            return success;
+        } catch (Exception e) {
+            log.error(">>> DIRECT DELIVERY FAILED: {} <<<", e.getMessage());
+            throw new RuntimeException("Direct connector delivery failed", e);
+        }
+    }
+
+    /**
+     * Checks if a string is a valid UUID format.
+     * 
+     * @param value The string to check
+     * @return true if the string matches UUID format
+     */
+    private boolean isUUID(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        
+        // UUID format: 8-4-4-4-12 hexadecimal digits
+        // Example: 550e8400-e29b-41d4-a716-446655440000
+        String uuidRegex = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+        return value.matches(uuidRegex);
     }
 
     /**

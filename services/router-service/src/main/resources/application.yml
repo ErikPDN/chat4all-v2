@@ -117,3 +117,6 @@ app:
     retry-delay-ms: 1000
   deduplication:
     ttl-days: 7
+  services:
+    user-service:
+      url: ${USER_SERVICE_URL:http://localhost:8083}

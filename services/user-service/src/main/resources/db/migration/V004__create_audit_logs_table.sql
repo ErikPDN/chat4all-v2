@@ -2,23 +2,21 @@
 -- Purpose: Track identity mapping operations and configuration changes
 -- Requirements: FR-035
 
--- Create audit_event_type ENUM
-CREATE TYPE audit_event_type_enum AS ENUM ('CREATE', 'UPDATE', 'DELETE', 'LINK', 'UNLINK');
-
 -- Create immutable audit_logs table
 CREATE TABLE audit_logs (
     log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     entity_type VARCHAR(100) NOT NULL,
     entity_id UUID NOT NULL,
-    action audit_event_type_enum NOT NULL,
-    performed_by UUID REFERENCES users(user_id),
+    action VARCHAR(20) NOT NULL,
+    performed_by UUID REFERENCES users(id),
     timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     changes JSONB,
     ip_address INET,
     user_agent TEXT,
     
     -- Ensure timestamp is always set
-    CONSTRAINT audit_logs_timestamp_not_null CHECK (timestamp IS NOT NULL)
+    CONSTRAINT audit_logs_timestamp_not_null CHECK (timestamp IS NOT NULL),
+    CONSTRAINT audit_logs_action_check CHECK (action IN ('CREATE', 'UPDATE', 'DELETE', 'LINK', 'UNLINK'))
 );
 
 -- Create indexes for performance
