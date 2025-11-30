@@ -231,6 +231,12 @@ public class RoutingHandler {
                     messageEvent.getChannel());
             // For INTERNAL channel, we don't deliver externally
             updateMessageStatus(messageEvent, MessageStatus.DELIVERED);
+            
+            // Metric: Count routing (even for INTERNAL channel) (T113)
+            meterRegistry.counter("messages.routed.total",
+                "destination_channel", messageEvent.getChannel() != null ? 
+                    messageEvent.getChannel().name() : "UNKNOWN"
+            ).increment();
             return;
         }
 
