@@ -1,5 +1,6 @@
 # Prometheus Configuration for Chat4All v2
 # T115: Scrape metrics from services running on host
+# T117: Alert rules configuration
 
 global:
   scrape_interval: 5s
@@ -7,6 +8,10 @@ global:
   external_labels:
     cluster: 'chat4all-dev'
     environment: 'development'
+
+# Alert rule files (T117)
+rule_files:
+  - '/etc/prometheus/alerts.yml'
 
 # Scrape configurations
 scrape_configs:

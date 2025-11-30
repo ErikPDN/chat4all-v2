@@ -262,7 +262,7 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 - [X] T114 [P] Configure OpenTelemetry Java Agent in Dockerfile for all services with OTLP exporter to Jaeger
 - [X] T115 [P] Create Prometheus scrape configuration in `infrastructure/prometheus/prometheus.yml` targeting all services' /actuator/prometheus endpoints
 - [X] T116 [P] Create Grafana dashboards in `infrastructure/grafana/dashboards/` for: Message Throughput, Delivery Latency, Error Rates, System Health
-- [ ] T117 [P] Configure Prometheus alerts in `infrastructure/prometheus/alerts.yml` for: message delivery latency >5s (FR-040), error rate >1%, service down
+- [X] T117 [P] Configure Prometheus alerts in `infrastructure/prometheus/alerts.yml` for: message delivery latency >5s (FR-040), error rate >1%, service down
 - [X] T118 [P] Implement distributed tracing context propagation in KafkaProducer and KafkaConsumer using OpenTelemetry instrumentation
 
 ---
