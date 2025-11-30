@@ -1,0 +1,32 @@
+groups:
+  - name: chat4all_alerts
+    interval: 30s
+    rules:
+      - alert: HighMessageLatency
+        expr: histogram_quantile(0.95, rate(messages_processing_time_seconds_bucket[1m])) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: message-service
+        annotations:
+          summary: "High message processing latency detected"
+          description: "P95 latency is {{ $value }}s (threshold: 5s)"
+
+      - alert: HighRoutingErrorRate
+        expr: rate(messages_routing_errors_total[5m]) / rate(messages_routed_total[5m]) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+          service: router-service
+        annotations:
+          summary: "High message routing error rate"
+          description: "Routing error rate is {{ $value | humanizePercentage }}"
+
+      - alert: ServiceInstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service instance is down"
+          description: "{{ $labels.job }} instance {{ $labels.instance }} is down"
