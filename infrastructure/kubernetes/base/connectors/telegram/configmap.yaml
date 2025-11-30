@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telegram-connector-config
+  labels:
+    app: telegram-connector
+data:
+  SPRING_PROFILES_ACTIVE: "kubernetes"
+  SERVER_PORT: "8092"
+  
+  # Telegram Bot API Configuration
+  TELEGRAM_API_URL: "https://api.telegram.org"
+  TELEGRAM_BOT_TOKEN: "placeholder-bot-token"
+  TELEGRAM_BOT_USERNAME: "chat4all_bot"
+  
+  # Kafka Configuration
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  
+  # Observability
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus,metrics"
+  MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+  MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILES_HISTOGRAM_HTTP: "true"
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "0.1"
+  MANAGEMENT_OTLP_TRACING_ENDPOINT: "http://jaeger:4318/v1/traces"
+  
+  # Logging
+  LOGGING_LEVEL_COM_CHAT4ALL: "INFO"
+  LOGGING_PATTERN_CONSOLE: "%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n"

@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: instagram-connector-config
+  labels:
+    app: instagram-connector
+data:
+  SPRING_PROFILES_ACTIVE: "kubernetes"
+  SERVER_PORT: "8093"
+  
+  # Instagram Messaging API Configuration
+  INSTAGRAM_API_URL: "https://graph.facebook.com/v17.0"
+  INSTAGRAM_PAGE_ID: "placeholder-page-id"
+  INSTAGRAM_VERIFY_TOKEN: "chat4all-instagram-verify-token"
+  
+  # Kafka Configuration
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  
+  # Observability
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus,metrics"
+  MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+  MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILES_HISTOGRAM_HTTP: "true"
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "0.1"
+  MANAGEMENT_OTLP_TRACING_ENDPOINT: "http://jaeger:4318/v1/traces"
+  
+  # Logging
+  LOGGING_LEVEL_COM_CHAT4ALL: "INFO"
+  LOGGING_PATTERN_CONSOLE: "%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n"

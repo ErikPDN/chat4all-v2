@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: file-service-config
+  labels:
+    app: file-service
+data:
+  SPRING_PROFILES_ACTIVE: "kubernetes"
+  SERVER_PORT: "8084"
+  
+  # MongoDB Configuration
+  SPRING_DATA_MONGODB_URI: "mongodb://mongodb:27017/chat4all"
+  SPRING_DATA_MONGODB_DATABASE: "chat4all"
+  
+  # S3/MinIO Configuration
+  S3_ENDPOINT: "http://minio:9000"
+  S3_BUCKET_NAME: "chat4all-files"
+  S3_ACCESS_KEY: "minioadmin"
+  S3_REGION: "us-east-1"
+  
+  # File Upload Limits
+  SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: "100MB"
+  SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: "100MB"
+  
+  # Observability
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus,metrics"
+  MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+  MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILES_HISTOGRAM_HTTP: "true"
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "0.1"
+  MANAGEMENT_OTLP_TRACING_ENDPOINT: "http://jaeger:4318/v1/traces"
+  
+  # Logging
+  LOGGING_LEVEL_COM_CHAT4ALL: "INFO"
+  LOGGING_PATTERN_CONSOLE: "%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n"
