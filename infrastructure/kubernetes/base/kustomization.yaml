@@ -16,6 +16,14 @@ resources:
   - connectors/whatsapp/
   - connectors/telegram/
   - connectors/instagram/
+  
+  # Ingress Configuration
+  - ingress.yaml
+  
+  # Network Policies (Zero Trust)
+  - network-policies/deny-all.yaml
+  - network-policies/allow-api-gateway.yaml
+  - network-policies/allow-internal-comm.yaml
 
 commonLabels:
   app.kubernetes.io/platform: chat4all
