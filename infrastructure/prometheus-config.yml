@@ -1,0 +1,54 @@
+# Prometheus Configuration for Chat4All v2
+# T115: Scrape metrics from services running on host
+
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+  external_labels:
+    cluster: 'chat4all-dev'
+    environment: 'development'
+
+# Scrape configurations
+scrape_configs:
+  # Chat4All microservices running on host (Maven spring-boot:run)
+  - job_name: 'chat4all-services'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 5s
+    static_configs:
+      - targets: 
+          - 'host.docker.internal:8081'  # message-service
+          - 'host.docker.internal:8082'  # router-service
+          - 'host.docker.internal:8083'  # user-service
+        labels:
+          application: 'chat4all-backend'
+          team: 'platform'
+
+  # File service
+  - job_name: 'file-service'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['host.docker.internal:8084']
+        labels:
+          application: 'chat4all-backend'
+          service: 'file-service'
+
+  # Platform connectors
+  - job_name: 'connectors'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 5s
+    static_configs:
+      - targets:
+          - 'host.docker.internal:8091'  # whatsapp-connector
+          - 'host.docker.internal:8092'  # telegram-connector
+          - 'host.docker.internal:8093'  # instagram-connector
+        labels:
+          application: 'chat4all-connectors'
+          team: 'platform'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          application: 'monitoring'
