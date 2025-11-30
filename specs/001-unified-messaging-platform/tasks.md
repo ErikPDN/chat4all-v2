@@ -256,7 +256,7 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 **Goal**: Implement full-stack observability per constitutional Principle VI
 
-- [ ] T111 [P] Configure Logback JSON encoder in all services at `src/main/resources/logback-spring.xml` using shared/observability library
+- [X] T111 [P] Configure Logback JSON encoder in all services at `src/main/resources/logback-spring.xml` using shared/observability library
 - [ ] T112 [P] Add Micrometer metrics to MessageController (message.send.count, message.send.latency) in `services/message-service/`
 - [ ] T113 [P] Add Micrometer metrics to RouterService (message.route.count, message.delivery.latency, message.retry.count) in `services/router-service/`
 - [ ] T114 [P] Configure OpenTelemetry Java Agent in Dockerfile for all services with OTLP exporter to Jaeger

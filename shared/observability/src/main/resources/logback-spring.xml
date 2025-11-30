@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Import Spring Boot defaults -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    
+    <!-- Property for app name from Spring context -->
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="chat4all-service"/>
+    
+    <!-- Console Appender with JSON formatting -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- Custom fields -->
+            <customFields>{"app_name":"${appName}"}</customFields>
+            
+            <!-- Standard fields configuration -->
+            <includeMdcKeyName>true</includeMdcKeyName>
+            <includeContext>true</includeContext>
+            <includeCallerData>false</includeCallerData>
+            <includeTags>true</includeTags>
+            
+            <!-- Field names configuration -->
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>version</version>
+                <message>message</message>
+                <logger>logger</logger>
+                <thread>thread</thread>
+                <level>level</level>
+                <levelValue>level_value</levelValue>
+                <stackTrace>stack_trace</stackTrace>
+            </fieldNames>
+            
+            <!-- Timestamp format -->
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSZ</timestampPattern>
+            
+            <!-- Include MDC (Mapped Diagnostic Context) for trace_id, span_id, etc. -->
+            <provider class="net.logstash.logback.composite.loggingevent.MdcJsonProvider">
+                <includeMdcKeyName>trace_id</includeMdcKeyName>
+                <includeMdcKeyName>span_id</includeMdcKeyName>
+                <includeMdcKeyName>correlation_id</includeMdcKeyName>
+                <includeMdcKeyName>user_id</includeMdcKeyName>
+            </provider>
+        </encoder>
+    </appender>
+    
+    <!-- Async wrapper for better performance -->
+    <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="CONSOLE"/>
+    </appender>
+    
+    <!-- Root logger configuration -->
+    <root level="INFO">
+        <appender-ref ref="ASYNC_CONSOLE"/>
+    </root>
+    
+    <!-- Application-specific logging levels -->
+    <logger name="com.chat4all" level="DEBUG"/>
+    
+    <!-- Spring Framework logging -->
+    <logger name="org.springframework" level="INFO"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.kafka" level="INFO"/>
+    
+    <!-- MongoDB logging -->
+    <logger name="org.mongodb.driver" level="WARN"/>
+    
+    <!-- Kafka logging -->
+    <logger name="org.apache.kafka" level="WARN"/>
+    
+    <!-- Reduce noise from health checks -->
+    <logger name="org.springframework.boot.actuate" level="WARN"/>
+    
+    <!-- Profile-specific configurations -->
+    <springProfile name="dev">
+        <root level="DEBUG">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+        </root>
+    </springProfile>
+    
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+        </root>
+        <!-- In production, reduce application debug logging -->
+        <logger name="com.chat4all" level="INFO"/>
+    </springProfile>
+</configuration>

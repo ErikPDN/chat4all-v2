@@ -81,6 +81,13 @@
             <artifactId>resilience4j-circuitbreaker</artifactId>
         </dependency>
 
+        <!-- Shared Modules -->
+        <dependency>
+            <groupId>com.chat4all</groupId>
+            <artifactId>observability</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+        </dependency>
+
         <!-- Micrometer for Metrics -->
         <dependency>
             <groupId>io.micrometer</groupId>
