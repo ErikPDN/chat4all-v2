@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: message-service-config
+  labels:
+    app: message-service
+data:
+  SPRING_PROFILES_ACTIVE: "kubernetes"
+  SERVER_PORT: "8081"
+  
+  # MongoDB Configuration
+  SPRING_DATA_MONGODB_URI: "mongodb://mongodb:27017/chat4all"
+  SPRING_DATA_MONGODB_DATABASE: "chat4all"
+  
+  # Redis Configuration
+  SPRING_DATA_REDIS_HOST: "redis"
+  SPRING_DATA_REDIS_PORT: "6379"
+  
+  # Kafka Configuration
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  SPRING_KAFKA_CONSUMER_GROUP_ID: "message-service-group"
+  SPRING_KAFKA_PRODUCER_COMPRESSION_TYPE: "snappy"
+  
+  # Service Discovery
+  USER_SERVICE_URL: "http://user-service:8083"
+  FILE_SERVICE_URL: "http://file-service:8084"
+  
+  # Observability
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus,metrics"
+  MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+  MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILES_HISTOGRAM_MESSAGES: "true"
+  MANAGEMENT_METRICS_DISTRIBUTION_PERCENTILES_HISTOGRAM_HTTP: "true"
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "0.1"
+  MANAGEMENT_OTLP_TRACING_ENDPOINT: "http://jaeger:4318/v1/traces"
+  
+  # Logging
+  LOGGING_LEVEL_COM_CHAT4ALL: "INFO"
+  LOGGING_PATTERN_CONSOLE: "%d{ISO8601} [%thread] %-5level %logger{36} - %msg%n"

@@ -273,10 +273,10 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 ### Kubernetes Configuration
 
-- [ ] T119 [P] Create Kustomize base for api-gateway in `infrastructure/kubernetes/base/api-gateway/` with Deployment, Service, ConfigMap
-- [ ] T120 [P] Create Kustomize base for message-service in `infrastructure/kubernetes/base/message-service/` with Deployment, Service, ConfigMap, liveness/readiness probes
-- [ ] T121 [P] Create Kustomize base for router-service in `infrastructure/kubernetes/base/router-service/` with Deployment (no Service - internal consumer)
-- [ ] T122 [P] Create Kustomize base for user-service in `infrastructure/kubernetes/base/user-service/` with Deployment, Service, ConfigMap
+- [X] T119 [P] Create Kustomize base for api-gateway in `infrastructure/kubernetes/base/api-gateway/` with Deployment, Service, ConfigMap
+- [X] T120 [P] Create Kustomize base for message-service in `infrastructure/kubernetes/base/message-service/` with Deployment, Service, ConfigMap, liveness/readiness probes
+- [X] T121 [P] Create Kustomize base for router-service in `infrastructure/kubernetes/base/router-service/` with Deployment (no Service - internal consumer)
+- [X] T122 [P] Create Kustomize base for user-service in `infrastructure/kubernetes/base/user-service/` with Deployment, Service, ConfigMap
 - [ ] T123 [P] Create Kustomize base for file-service in `infrastructure/kubernetes/base/file-service/` with Deployment, Service, ConfigMap
 - [ ] T124 [P] Create Kustomize base for whatsapp-connector in `infrastructure/kubernetes/base/connectors/whatsapp/` with Deployment, Service
 - [ ] T125 [P] Create Kustomize base for telegram-connector in `infrastructure/kubernetes/base/connectors/telegram/` with Deployment, Service
