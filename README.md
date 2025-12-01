@@ -212,9 +212,6 @@ chat4all-v2/
 4. **CI/CD**: GitHub Actions build, test, and deploy via ArgoCD
 5. **Monitoring**: Check Grafana dashboards for service health
 
-## Configuration
-
-Environment variables for local development:
 
 ```bash
 # Database

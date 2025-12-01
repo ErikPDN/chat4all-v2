@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:21-jre
 VOLUME /tmp
 WORKDIR /app
 COPY target/*.jar app.jar

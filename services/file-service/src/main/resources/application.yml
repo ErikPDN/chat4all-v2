@@ -2,6 +2,12 @@ spring:
   application:
     name: file-service
   
+  # File Upload Configuration (FR-024)
+  servlet:
+    multipart:
+      max-file-size: 2GB
+      max-request-size: 2GB
+  
   # MongoDB Configuration
   data:
     mongodb:
@@ -23,7 +29,7 @@ s3:
 # File Configuration
 file:
   ttl-hours: 24  # File expiration (TTL)
-  max-file-size: 104857600  # 100MB in bytes
+  max-file-size: 2147483648  # 2GB in bytes (FR-024)
   # Comma-separated list of allowed MIME types (FR-022)
   allowed-mime-types: image/jpeg,image/png,image/gif,image/webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,video/mp4,video/quicktime,audio/mpeg,audio/wav
 

@@ -267,39 +267,27 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 ---
 
-## Phase 10: Infrastructure & Deployment
 
-**Goal**: Kubernetes manifests, Helm charts, and deployment automation
+---
 
-### Kubernetes Configuration
+## Phase 10: Scalability & Resilience (Docker Compose)
 
-- [X] T119 [P] Create Kustomize base for api-gateway in `infrastructure/kubernetes/base/api-gateway/` with Deployment, Service, ConfigMap
-- [X] T120 [P] Create Kustomize base for message-service in `infrastructure/kubernetes/base/message-service/` with Deployment, Service, ConfigMap, liveness/readiness probes
-- [X] T121 [P] Create Kustomize base for router-service in `infrastructure/kubernetes/base/router-service/` with Deployment (no Service - internal consumer)
-- [X] T122 [P] Create Kustomize base for user-service in `infrastructure/kubernetes/base/user-service/` with Deployment, Service, ConfigMap
-- [X] T123 [P] Create Kustomize base for file-service in `infrastructure/kubernetes/base/file-service/` with Deployment, Service, ConfigMap
-- [X] T124 [P] Create Kustomize base for whatsapp-connector in `infrastructure/kubernetes/base/connectors/whatsapp/` with Deployment, Service
-- [X] T125 [P] Create Kustomize base for telegram-connector in `infrastructure/kubernetes/base/connectors/telegram/` with Deployment, Service
-- [X] T126 [P] Create Kustomize base for instagram-connector in `infrastructure/kubernetes/base/connectors/instagram/` with Deployment, Service
-- [X] T127 [P] Create Kustomize overlays for dev environment in `infrastructure/kubernetes/overlays/dev/` with reduced replicas, resource limits
-- [X] T128 [P] Create Kustomize overlays for production in `infrastructure/kubernetes/overlays/production/` with HPA (Horizontal Pod Autoscaler), PodDisruptionBudget, increased resources
-- [X] T129 Create Ingress configuration in `infrastructure/kubernetes/base/ingress.yaml` routing traffic to api-gateway
-- [X] T130 Create NetworkPolicy in `infrastructure/kubernetes/base/network-policies/` restricting inter-service communication
+**Goal**: Validate horizontal scalability and fault tolerance using Docker Compose for production readiness
 
-### CI/CD & GitOps
+**Context**: Focus on functional requirements from project specification - file upload limits, horizontal scaling, and resilience testing
 
-- [ ] T131 [P] Create ArgoCD Application manifest in `infrastructure/argocd/application.yaml` for automated GitOps deployment
-- [ ] T132 [P] Add integration test stage to `.github/workflows/test.yml` using Testcontainers with PostgreSQL, MongoDB, Kafka, Redis
-- [X] T133 [P] Add Docker image build and push to GitHub Container Registry in `.github/workflows/build.yml`
-- [ ] T134 [P] Create deployment workflow `.github/workflows/deploy.yml` with manual approval for production, auto-deploy to dev/staging
-- [ ] T135 Configure canary deployment in `infrastructure/kubernetes/overlays/production/rollout.yaml` using Argo Rollouts (10% → 50% → 100%)
+- [X] T119 Prepare `docker-compose.yml` for horizontal scalability by removing fixed port mappings from worker services (router-service) to enable multiple instances without port conflicts
+- [X] T120 Configure 2GB file upload limit in API Gateway (`spring.servlet.multipart.max-file-size=2GB`) and File Service to meet specification requirement (FR-024)
+- [X] T121 Execute horizontal scalability test: Scale router-service to 3 instances (`docker-compose up --scale router-service=3`) and verify load distribution via Prometheus metrics
+- [X] T122 Execute fault tolerance test: Kill router-service process during message load and verify automatic recovery, message reprocessing from Kafka, and zero message loss  
+- [X] T123 Generate technical report documenting: (a) Scalability test results with metrics screenshots, (b) Fault tolerance test evidence with recovery logs, (c) Performance characteristics under load
 
-### Database Management
-
-- [ ] T136 Create Terraform module for PostgreSQL HA setup in `infrastructure/terraform/databases/postgres/` using cloud-managed service (RDS, Cloud SQL)
-- [ ] T137 Create Terraform module for MongoDB replica set in `infrastructure/terraform/databases/mongodb/` with 3 nodes across availability zones
-- [ ] T138 Create Terraform module for Redis cluster in `infrastructure/terraform/databases/redis/` with 3 master nodes, 3 replicas
-- [ ] T139 Create Terraform module for Kafka cluster in `infrastructure/terraform/kafka/` with 3 brokers, ZooKeeper ensemble
+**Success Criteria**:
+- Router service can scale to 3+ instances without errors
+- 2GB file uploads succeed end-to-end
+- System recovers from process failures within 30 seconds
+- Zero message loss during fault injection
+- Complete report with evidence and recommendations
 
 ---
 

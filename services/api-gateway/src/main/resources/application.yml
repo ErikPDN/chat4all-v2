@@ -5,6 +5,12 @@ spring:
   application:
     name: api-gateway
   
+  # File Upload Configuration (FR-024)
+  servlet:
+    multipart:
+      max-file-size: 2GB
+      max-request-size: 2GB
+  
   # OAuth2 Resource Server Configuration
   security:
     oauth2:
