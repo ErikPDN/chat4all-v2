@@ -1,5 +1,6 @@
 package com.chat4all.connector.telegram.service;
 
+import com.chat4all.connector.telegram.client.TelegramApiClient;
 import com.chat4all.connector.telegram.dto.SendMessageRequest;
 import com.chat4all.connector.telegram.dto.SendMessageResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -9,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Instant;
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -18,26 +18,50 @@ public class TelegramService {
     @Value("${callback.base-url:http://localhost:8081}")
     private String callbackBaseUrl;
 
+    private final TelegramApiClient telegramApiClient;
     private final WebClient webClient;
 
-    public TelegramService(WebClient.Builder webClientBuilder) {
+    public TelegramService(TelegramApiClient telegramApiClient, WebClient.Builder webClientBuilder) {
+        this.telegramApiClient = telegramApiClient;
         this.webClient = webClientBuilder.build();
     }
 
+    /**
+     * Envia mensagem usando a API REAL do Telegram
+     */
     public SendMessageResponse sendMessage(SendMessageRequest request) {
-        String telegramMessageId = "tg_" + UUID.randomUUID().toString();
+        try {
+            log.info("[Telegram] Sending message via Telegram Bot API: messageId={}, chatId={}, contentLength={}",
+                request.getMessageId(), request.getChatId(), request.getContent().length());
 
-        log.info("[Telegram] Simulating message delivery: messageId={}, telegramId={}",
-            request.getMessageId(), telegramMessageId);
+            // Chamada REAL para a API do Telegram
+            TelegramApiClient.TelegramSendMessageResponse telegramResponse = 
+                telegramApiClient.sendMessage(request.getChatId(), request.getContent());
 
-        sendReadStatusCallback(request.getMessageId(), telegramMessageId);
+            String telegramMessageId = String.valueOf(telegramResponse.getResult().getMessageId());
 
-        return SendMessageResponse.builder()
-            .messageId(request.getMessageId())
-            .telegramMessageId(telegramMessageId)
-            .status("SENT")
-            .timestamp(Instant.now().toString())
-            .build();
+            log.info("[Telegram] Message sent successfully via Telegram API: messageId={}, telegramMessageId={}",
+                request.getMessageId(), telegramMessageId);
+
+            // Envia callback de READ status (simulando que o usuário leu a mensagem)
+            sendReadStatusCallback(request.getMessageId(), telegramMessageId);
+
+            return SendMessageResponse.builder()
+                .messageId(request.getMessageId())
+                .telegramMessageId(telegramMessageId)
+                .status("SENT")
+                .timestamp(Instant.now().toString())
+                .build();
+
+        } catch (TelegramApiClient.TelegramApiException e) {
+            log.error("[Telegram] Failed to send message via Telegram API: messageId={}, error={}, statusCode={}",
+                request.getMessageId(), e.getMessage(), e.getStatusCode());
+            throw e; // Propaga o erro para que o router faça retry
+        } catch (Exception e) {
+            log.error("[Telegram] Unexpected error sending message: messageId={}", 
+                request.getMessageId(), e);
+            throw new RuntimeException("Failed to send Telegram message", e);
+        }
     }
 
     @Async
