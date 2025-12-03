@@ -73,7 +73,7 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 - [x] T027 [P] Create Spring Security OAuth2 configuration in `services/api-gateway/src/main/java/com/chat4all/gateway/security/OAuth2Config.java` with scopes: messages:read, messages:write
 - [x] T028 [P] Create API Gateway routes configuration in `services/api-gateway/src/main/resources/application.yml` routing to message-service, user-service, file-service
 - [x] T029 [P] Create global exception handler in `services/api-gateway/src/main/java/com/chat4all/gateway/filter/GlobalErrorFilter.java` for standardized error responses
-- [ ] T030 [P] Create health check endpoints in all services at `/actuator/health` using Spring Boot Actuator
+- [x] T030 [P] Create health check endpoints in all services at `/actuator/health` using Spring Boot Actuator
 
 ### Kafka Infrastructure
 
@@ -208,10 +208,10 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 - [x] T086 [US5] Implement IdentityMappingService in `services/user-service/src/main/java/com/chat4all/user/service/IdentityMappingService.java` with methods: linkIdentity(), unlinkIdentity(), suggestMatches()
 - [x] T087 [US5] Create UserController in `services/user-service/src/main/java/com/chat4all/user/api/UserController.java` implementing POST /users, GET /users/{id}, GET /users endpoints
 - [x] T088 [US5] Create IdentityController in `services/user-service/src/main/java/com/chat4all/user/api/IdentityController.java` implementing POST /users/{id}/identities, DELETE /users/{id}/identities/{identityId}
-- [ ] T089 [US5] Implement identity verification workflow in `services/user-service/src/main/java/com/chat4all/user/service/VerificationService.java` for high-security channels (FR-034)
-- [ ] T090 [US5] Create audit logging for identity operations in `services/user-service/src/main/java/com/chat4all/user/service/AuditService.java` writing to audit_logs table (FR-035)
+- [x] T089 [US5] Implement identity verification workflow in `services/user-service/src/main/java/com/chat4all/user/service/VerificationService.java` for high-security channels (FR-034)
+- [x] T090 [US5] Create audit logging for identity operations in `services/user-service/src/main/java/com/chat4all/user/service/AuditService.java` writing to audit_logs table (FR-035)
 - [x] T091 [US5] Add unique constraint on external_identities table (platform, platform_user_id) in Flyway migration V002
-- [ ] T092 [US5] Implement identity suggestion algorithm in IdentityMappingService.suggestMatches() comparing phone numbers, email addresses for potential matches
+- [x] T092 [US5] Implement identity suggestion algorithm in IdentityMappingService.suggestMatches() comparing phone numbers, email addresses for potential matches
 
 **Checkpoint**: Identity mapping is complete - users can have unified profiles across multiple platforms
 
