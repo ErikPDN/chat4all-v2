@@ -42,7 +42,7 @@
 
         <!-- Testing -->
         <junit.version>5.10.1</junit.version>
-        <mockito.version>5.7.0</mockito.version>
+        <mockito.version>5.20.0</mockito.version>
         <testcontainers.version>1.19.3</testcontainers.version>
         <rest-assured.version>5.4.0</rest-assured.version>
 
