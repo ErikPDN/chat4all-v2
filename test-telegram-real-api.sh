@@ -108,7 +108,7 @@ echo "{
 }"
 echo ""
 
-RESPONSE=$(curl -s -X POST "$CONNECTOR_URL/api/send" \
+RESPONSE=$(curl -s -X POST "$CONNECTOR_URL/v1/messages" \
   -H "Content-Type: application/json" \
   -d "{
     \"messageId\": \"$MESSAGE_ID\",
@@ -148,7 +148,7 @@ MESSAGE_ID="test-emoji-$(date +%s)"
 TEXT="🎉 Emojis suportados! 👍\n\n✅ Sucesso\n❌ Erro\n⚠️ Aviso\n🔔 Notificação\n🚀 Deploy"
 
 echo ""
-RESPONSE=$(curl -s -X POST "$CONNECTOR_URL/api/send" \
+RESPONSE=$(curl -s -X POST "$CONNECTOR_URL/v1/messages" \
   -H "Content-Type: application/json" \
   -d "{
     \"messageId\": \"$MESSAGE_ID\",
@@ -198,7 +198,7 @@ Este é um teste de mensagem longa para validar que o telegram-connector consegu
 O limite do Telegram é 4096 caracteres por mensagem. Mensagens maiores precisam ser divididas."
 
 echo ""
-RESPONSE=$(curl -s -X POST "$CONNECTOR_URL/api/send" \
+RESPONSE=$(curl -s -X POST "$CONNECTOR_URL/v1/messages" \
   -H "Content-Type: application/json" \
   -d "{
     \"messageId\": \"$MESSAGE_ID\",
@@ -236,7 +236,7 @@ echo ""
 echo "Tentando enviar para chat_id inválido: $INVALID_CHAT_ID"
 echo ""
 
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$CONNECTOR_URL/api/send" \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$CONNECTOR_URL/v1/messages" \
   -H "Content-Type: application/json" \
   -d "{
     \"messageId\": \"$MESSAGE_ID\",
