@@ -1,0 +1,175 @@
+# Dependabot Configuration
+#
+# Automatically creates pull requests to keep dependencies up-to-date
+# across all Maven modules and Docker images.
+#
+# Documentation: https://docs.github.com/en/code-security/dependabot
+
+version: 2
+
+updates:
+  # Maven dependencies for parent POM
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "02:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "ErikPDN"
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "build(deps):"
+    groups:
+      spring:
+        patterns:
+          - "org.springframework*"
+      testing:
+        patterns:
+          - "org.junit*"
+          - "org.mockito*"
+          - "org.testcontainers*"
+
+  # API Gateway service
+  - package-ecosystem: "maven"
+    directory: "/services/api-gateway"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "api-gateway"
+
+  # Message Service
+  - package-ecosystem: "maven"
+    directory: "/services/message-service"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "message-service"
+
+  # User Service
+  - package-ecosystem: "maven"
+    directory: "/services/user-service"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "user-service"
+
+  # File Service
+  - package-ecosystem: "maven"
+    directory: "/services/file-service"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "file-service"
+
+  # Router Service
+  - package-ecosystem: "maven"
+    directory: "/services/router-service"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "router-service"
+
+  # WhatsApp Connector
+  - package-ecosystem: "maven"
+    directory: "/services/connectors/whatsapp-connector"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "connectors"
+
+  # Telegram Connector
+  - package-ecosystem: "maven"
+    directory: "/services/connectors/telegram-connector"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "connectors"
+
+  # Instagram Connector
+  - package-ecosystem: "maven"
+    directory: "/services/connectors/instagram-connector"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "connectors"
+
+  # Shared libraries - Common Domain
+  - package-ecosystem: "maven"
+    directory: "/shared/common-domain"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+    labels:
+      - "dependencies"
+      - "shared"
+
+  # Shared libraries - Connector SDK
+  - package-ecosystem: "maven"
+    directory: "/shared/connector-sdk"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+    labels:
+      - "dependencies"
+      - "shared"
+
+  # Shared libraries - Observability
+  - package-ecosystem: "maven"
+    directory: "/shared/observability"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+    labels:
+      - "dependencies"
+      - "shared"
+
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "thursday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "ci-cd"

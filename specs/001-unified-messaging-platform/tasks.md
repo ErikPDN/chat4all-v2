@@ -302,8 +302,8 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 - [x] T144 [P] Create runbook in `docs/runbooks/scaling.md` for scaling services during traffic spikes
 - [X] T145 [P] Create Architecture Decision Record (ADR) in `docs/adr/001-dual-database-architecture.md` documenting MongoDB vs PostgreSQL choice
 - [X] T146 [P] Add performance tests with K6 in `performance-tests/` simulating 10K concurrent conversations (SC-003)
-- [ ] T147 [P] Validate quickstart.md works end-to-end: docker-compose up → send message → verify delivery
-- [ ] T148 [P] Create security scanning workflow `.github/workflows/security.yml` using Snyk or Dependabot for dependency vulnerabilities
+- [X] T147 [P] Validate quickstart.md works end-to-end: docker-compose up → send message → verify delivery
+- [X] T148 [P] Create security scanning workflow `.github/workflows/security.yml` using Snyk or Dependabot for dependency vulnerabilities
 - [ ] T149 [P] Implement secrets management using Kubernetes Secrets or HashiCorp Vault for connector credentials
 - [ ] T150 [P] Add correlation ID generation and propagation across all services in `shared/observability/src/main/java/com/chat4all/observability/correlation/CorrelationIdFilter.java`
 

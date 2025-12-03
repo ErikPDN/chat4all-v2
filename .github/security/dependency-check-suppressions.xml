@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+        OWASP Dependency Check Suppressions
+        
+        Purpose: Suppress false positives and known non-exploitable vulnerabilities
+        
+        Guidelines:
+        - Only suppress after careful review
+        - Include expiration dates for temporary suppressions
+        - Document reason for each suppression
+        - Review suppressions quarterly
+    -->
+
+    <!-- Example: Suppress specific CVE for a library -->
+    <!--
+    <suppress>
+        <notes>
+            Spring Boot false positive - CVE only affects Windows systems
+            and we run on Linux containers. Safe to suppress.
+            Review: 2025-03-01
+        </notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework\.boot/.*$</packageUrl>
+        <cve>CVE-2023-XXXXX</cve>
+    </suppress>
+    -->
+
+    <!-- Example: Suppress by file name pattern -->
+    <!--
+    <suppress>
+        <notes>
+            Test dependency - not included in production builds.
+            Review: 2025-06-01
+        </notes>
+        <filePath regex="true">.*test-dependencies.*</filePath>
+    </suppress>
+    -->
+
+    <!-- Add project-specific suppressions below -->
+
+</suppressions>
