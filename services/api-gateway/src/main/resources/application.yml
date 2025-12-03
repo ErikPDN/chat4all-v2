@@ -206,7 +206,7 @@ management:
       probability: 1.0  # 100% sampling in dev
   otlp:
     tracing:
-      endpoint: ${OTLP_ENDPOINT:http://localhost:4318/v1/traces}  # Jaeger OTLP HTTP endpoint
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces  # Jaeger OTLP HTTP endpoint
 
 # Logging Configuration
 logging:
