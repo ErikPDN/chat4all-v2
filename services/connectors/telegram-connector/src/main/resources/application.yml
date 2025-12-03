@@ -9,10 +9,16 @@ spring:
         queue-capacity: 100
 
 server:
-  port: 8092
+  port: 8086
+
+# Telegram Bot API Configuration
+app:
+  telegram:
+    api-url: ${TELEGRAM_API_URL:https://api.telegram.org}
+    bot-token: ${TELEGRAM_BOT_TOKEN:your-telegram-bot-token-here}
 
 callback:
-  base-url: http://localhost:8081
+  base-url: ${CALLBACK_BASE_URL:http://localhost:8081}
 
 management:
   endpoints:

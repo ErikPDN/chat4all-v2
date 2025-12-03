@@ -97,17 +97,22 @@ public class ConnectorClient {
         request.put("conversationId", messageEvent.getConversationId());
         request.put("senderId", messageEvent.getSenderId());
         
-        // Extract recipient from conversationId (format: "user1_user2" or similar)
-        // For MVP, we'll use conversationId as recipient identifier
-        String recipient = messageEvent.getConversationId();
+        // Extract recipient ID from the recipientIds list
+        String recipientId;
+        if (messageEvent.getRecipientIds() != null && !messageEvent.getRecipientIds().isEmpty()) {
+            recipientId = messageEvent.getRecipientIds().get(0); // Use first recipient
+        } else {
+            // Fallback to conversationId for backward compatibility
+            recipientId = messageEvent.getConversationId();
+        }
         
         // Add channel-specific recipient field
         // WhatsApp uses "to", Telegram uses "chatId", Instagram uses "recipient"
         switch (messageEvent.getChannel()) {
-            case WHATSAPP -> request.put("to", recipient);
-            case TELEGRAM -> request.put("chatId", recipient);
-            case INSTAGRAM -> request.put("recipient", recipient);
-            default -> request.put("to", recipient);
+            case WHATSAPP -> request.put("to", recipientId);
+            case TELEGRAM -> request.put("chatId", recipientId);
+            case INSTAGRAM -> request.put("recipient", recipientId);
+            default -> request.put("to", recipientId);
         }
         
         return request;
