@@ -18,11 +18,11 @@ spring:
 
 # S3/MinIO Configuration
 s3:
-  endpoint: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  region: us-east-1
-  bucket-name: chat4all-files
+  endpoint: ${S3_ENDPOINT:http://minio:9000}
+  access-key: ${S3_ACCESS_KEY:minioadmin}
+  secret-key: ${S3_SECRET_KEY:minioadmin}
+  region: ${S3_REGION:us-east-1}
+  bucket-name: ${S3_BUCKET_NAME:chat4all-files}
   upload-url-expiration: PT15M  # 15 minutes
   download-url-expiration: PT1H # 1 hour
 
@@ -35,7 +35,7 @@ file:
 
 # Server Configuration
 server:
-  port: 8083
+  port: 8084
 
 # Actuator Configuration
 management:

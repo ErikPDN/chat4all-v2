@@ -1,5 +1,5 @@
 # Prometheus Configuration for Chat4All v2
-# T115: Scrape metrics from services running on host
+# T115: Scrape metrics from services running in Docker Compose
 # T117: Alert rules configuration
 
 global:
@@ -15,38 +15,31 @@ rule_files:
 
 # Scrape configurations
 scrape_configs:
-  # Chat4All microservices running on host (Maven spring-boot:run)
+  # Chat4All microservices running in Docker Compose
+  # Uses Docker Compose service names for DNS resolution
   - job_name: 'chat4all-services'
     metrics_path: '/actuator/prometheus'
     scrape_interval: 5s
     static_configs:
       - targets: 
-          - 'host.docker.internal:8081'  # message-service
-          - 'host.docker.internal:8082'  # router-service
-          - 'host.docker.internal:8083'  # user-service
+          - 'api-gateway:8080'       # API Gateway
+          - 'message-service:8081'   # Message Service
+          - 'router-service:8082'    # Router Service
+          - 'user-service:8083'      # User Service
+          - 'file-service:8084'      # File Service
         labels:
           application: 'chat4all-backend'
           team: 'platform'
 
-  # File service
-  - job_name: 'file-service'
-    metrics_path: '/actuator/prometheus'
-    scrape_interval: 5s
-    static_configs:
-      - targets: ['host.docker.internal:8084']
-        labels:
-          application: 'chat4all-backend'
-          service: 'file-service'
-
-  # Platform connectors
+  # Platform connectors (Docker Compose service names)
   - job_name: 'connectors'
     metrics_path: '/actuator/prometheus'
     scrape_interval: 5s
     static_configs:
       - targets:
-          - 'host.docker.internal:8091'  # whatsapp-connector
-          - 'host.docker.internal:8092'  # telegram-connector
-          - 'host.docker.internal:8093'  # instagram-connector
+          - 'whatsapp-connector:8085'   # WhatsApp Connector
+          - 'telegram-connector:8086'   # Telegram Connector
+          - 'instagram-connector:8087'  # Instagram Connector
         labels:
           application: 'chat4all-connectors'
           team: 'platform'

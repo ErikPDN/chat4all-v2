@@ -62,7 +62,7 @@ public class OAuth2Config {
         http
             .authorizeExchange(exchanges -> exchanges
                 // Public endpoints - no authentication required
-                .pathMatchers("/actuator/health").permitAll()
+                .pathMatchers("/actuator/**").permitAll()  // Prometheus metrics + health
                 .pathMatchers("/api/webhooks/**").permitAll()
                 
                 // OpenAPI/Swagger documentation endpoints - public access

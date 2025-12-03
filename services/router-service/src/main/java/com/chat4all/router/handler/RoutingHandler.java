@@ -70,10 +70,10 @@ public class RoutingHandler {
     private final UserServiceClient userServiceClient;
     private final MeterRegistry meterRegistry;
 
-    // Connector URLs (in production, these would come from service discovery or config)
-    private static final String WHATSAPP_CONNECTOR_URL = "http://localhost:8091";
-    private static final String TELEGRAM_CONNECTOR_URL = "http://localhost:8092";
-    private static final String INSTAGRAM_CONNECTOR_URL = "http://localhost:8093";
+    // Connector URLs (Docker Compose service names)
+    private static final String WHATSAPP_CONNECTOR_URL = "http://whatsapp-connector:8085";
+    private static final String TELEGRAM_CONNECTOR_URL = "http://telegram-connector:8086";
+    private static final String INSTAGRAM_CONNECTOR_URL = "http://instagram-connector:8087";
 
     /**
      * Routes a message to the appropriate connector(s) based on its channel and recipients.
