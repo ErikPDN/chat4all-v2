@@ -297,8 +297,8 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 
 - [x] T140 [P] Create API documentation using Springdoc OpenAPI in all services generating /v3/api-docs endpoint
 - [x] T141 [P] Add rate limiting to API Gateway using Redis-backed rate limiter in `services/api-gateway/src/main/java/com/chat4all/gateway/filter/RateLimitFilter.java`
-- [ ] T142 [P] Implement request/response logging filter in API Gateway at `services/api-gateway/src/main/java/com/chat4all/gateway/filter/LoggingFilter.java`
-- [ ] T143 [P] Create runbook in `docs/runbooks/message-delivery-failure.md` for troubleshooting failed deliveries
+- [x] T142 [P] Implement request/response logging filter in API Gateway at `services/api-gateway/src/main/java/com/chat4all/gateway/filter/LoggingFilter.java`
+- [x] T143 [P] Create runbook in `docs/runbooks/message-delivery-failure.md` for troubleshooting failed deliveries
 - [ ] T144 [P] Create runbook in `docs/runbooks/scaling.md` for scaling services during traffic spikes
 - [ ] T145 [P] Create Architecture Decision Record (ADR) in `docs/adr/001-dual-database-architecture.md` documenting MongoDB vs PostgreSQL choice
 - [ ] T146 [P] Add performance tests with Gatling in `performance-tests/` simulating 10K concurrent conversations (SC-003)
