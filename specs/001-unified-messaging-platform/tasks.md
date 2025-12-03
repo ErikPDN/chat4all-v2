@@ -304,7 +304,7 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 - [X] T146 [P] Add performance tests with K6 in `performance-tests/` simulating 10K concurrent conversations (SC-003)
 - [X] T147 [P] Validate quickstart.md works end-to-end: docker-compose up → send message → verify delivery
 - [X] T148 [P] Create security scanning workflow `.github/workflows/security.yml` using Snyk or Dependabot for dependency vulnerabilities
-- [ ] T149 [P] Implement secrets management using Kubernetes Secrets or HashiCorp Vault for connector credentials
+- [X] T149 [P] Implement secrets management using Kubernetes Secrets or HashiCorp Vault for connector credentials
 - [ ] T150 [P] Add correlation ID generation and propagation across all services in `shared/observability/src/main/java/com/chat4all/observability/correlation/CorrelationIdFilter.java`
 
 ---
