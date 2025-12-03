@@ -48,26 +48,41 @@ docker-compose up -d
 
 This starts:
 - **Kafka** (localhost:9092)
-- **PostgreSQL** (localhost:5432)
+- **PostgreSQL** (localhost:5433) - Note: Port 5433 to avoid conflicts
 - **MongoDB** (localhost:27017)
 - **Redis** (localhost:6379)
 - **MinIO** (S3-compatible, localhost:9000)
 - **Prometheus** (localhost:9090)
 - **Grafana** (localhost:3000)
 - **Jaeger** (localhost:16686)
+- **API Gateway** (localhost:8080)
+- **Message Service** (localhost:8081)
+- **User Service** (localhost:8083)
+- **File Service** (localhost:8084)
+- **WhatsApp Connector** (localhost:8085)
+- **Telegram Connector** (localhost:8086)
+- **Instagram Connector** (localhost:8087)
+- **Router Service** (no external port)
 
 ### 3. Initialize Databases
 
-```bash
-# PostgreSQL migrations (Flyway)
-cd services/message-service
-./mvnw flyway:migrate
+**PostgreSQL** migrations are applied automatically on service startup via Flyway.
 
-# MongoDB indexes
-mongosh < infrastructure/mongodb/init-indexes.js
+**MongoDB** indexes are created automatically when services start.
+
+To verify:
+
+```bash
+# PostgreSQL tables
+docker exec chat4all-postgres psql -U chat4all -d chat4all -c "\dt"
+
+# MongoDB collections
+docker exec chat4all-mongodb mongosh --eval "use chat4all; show collections"
 ```
 
-### 4. Build All Services
+### 4. Build All Services (Optional)
+
+**Note**: If using `docker-compose up -d`, all services are already running. Building from source is only needed for local development.
 
 ```bash
 # From repository root
@@ -76,7 +91,13 @@ mongosh < infrastructure/mongodb/init-indexes.js
 
 ### 5. Run Services Locally
 
-#### Option A: Run Individual Services (Development)
+#### Option A: Docker Compose (Recommended)
+
+**All services are already running** after `docker-compose up -d`. Skip to [Verify Setup](#verify-setup).
+
+#### Option B: Run Individual Services (Development Only)
+
+For active development with hot reload:
 
 ```bash
 # Terminal 1: API Gateway
@@ -94,12 +115,15 @@ cd services/router-service
 # Terminal 4: User Service
 cd services/user-service
 ./mvnw spring-boot:run -Dspring-boot.run.arguments="--server.port=8083"
+
+# Terminal 5: File Service  
+cd services/file-service
+./mvnw spring-boot:run -Dspring-boot.run.arguments="--server.port=8084"
 ```
 
-#### Option B: Run All Services (Docker Compose)
-
+**Note**: When running locally, stop Docker Compose services first to avoid port conflicts:
 ```bash
-docker-compose -f docker-compose.services.yml up
+docker-compose stop api-gateway message-service user-service file-service
 ```
 
 ---
@@ -119,28 +143,48 @@ curl http://localhost:8081/actuator/health
 curl http://localhost:8081/actuator/prometheus
 ```
 
-### Send Test Message
+### Send Test Message (via Webhook)
+
+**Note**: Message endpoints require OAuth2 authentication. For quick testing, use the public webhook endpoint:
 
 ```bash
-curl -X POST http://localhost:8080/v1/messages \
+curl -X POST http://localhost:8080/api/webhooks/whatsapp \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
   -d '{
-    "conversation_id": "test-conv-001",
-    "sender_id": "550e8400-e29b-41d4-a716-446655440000",
-    "content": "Hello World!",
-    "channel": "INTERNAL"
+    "object": "whatsapp_business_account",
+    "entry": [{
+      "id": "123456789",
+      "changes": [{
+        "value": {
+          "messaging_product": "whatsapp",
+          "metadata": {
+            "display_phone_number": "15551234567",
+            "phone_number_id": "987654321"
+          },
+          "messages": [{
+            "from": "5511999887766",
+            "id": "wamid.test-001",
+            "timestamp": "1733247000",
+            "type": "text",
+            "text": {
+              "body": "Hello World!"
+            }
+          }]
+        },
+        "field": "messages"
+      }]
+    }]
   }'
 ```
 
-Expected response (HTTP 202):
+Expected response (HTTP 200):
 ```json
 {
-  "message_id": "generated-uuid",
-  "status": "PENDING",
-  "timestamp": "2025-11-23T10:00:00Z"
+  "status": "success"
 }
 ```
+
+**For authenticated endpoints**, you need a valid JWT token. See [OAuth2 Configuration](#oauth2-configuration) section.
 
 ---
 
@@ -232,9 +276,9 @@ git push origin feature/your-feature-name
 
 ```bash
 # Database
-export DB_POSTGRES_URL=jdbc:postgresql://localhost:5432/chat4all
-export DB_POSTGRES_USER=postgres
-export DB_POSTGRES_PASSWORD=postgres
+export DB_POSTGRES_URL=jdbc:postgresql://localhost:5433/chat4all  # Note: Port 5433
+export DB_POSTGRES_USER=chat4all  # Changed from postgres
+export DB_POSTGRES_PASSWORD=chat4all  # Changed from postgres
 
 export DB_MONGODB_URI=mongodb://localhost:27017/chat4all
 
