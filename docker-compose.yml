@@ -191,7 +191,7 @@ services:
       SPRING_DATA_REDIS_PASSWORD: chat4all_dev_password
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus,info
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: api-gateway
     depends_on:
       - redis
@@ -224,7 +224,7 @@ services:
       SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET: earliest
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus,info
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: message-service
     depends_on:
       - mongodb
@@ -258,7 +258,7 @@ services:
       INSTAGRAM_CONNECTOR_URL: http://instagram-connector:8087
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus,info
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: router-service
     depends_on:
       - redis
@@ -288,7 +288,7 @@ services:
       SPRING_FLYWAY_ENABLED: "true"
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus,info
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: user-service
     depends_on:
       - postgres
@@ -318,7 +318,7 @@ services:
       AWS_S3_REGION: us-east-1
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus,info
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: file-service
     depends_on:
       - mongodb
@@ -347,7 +347,7 @@ services:
       WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN:-test_verify_token}
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus,info
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: whatsapp-connector
     depends_on:
       - jaeger
@@ -373,7 +373,7 @@ services:
       TELEGRAM_API_URL: https://api.telegram.org
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus,info
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: telegram-connector
     depends_on:
       - jaeger
@@ -399,7 +399,7 @@ services:
       INSTAGRAM_ACCESS_TOKEN: ${INSTAGRAM_ACCESS_TOKEN:-}
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,prometheus,info
       MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4318
       OTEL_SERVICE_NAME: instagram-connector
     depends_on:
       - jaeger

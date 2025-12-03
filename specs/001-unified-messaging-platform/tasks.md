@@ -296,16 +296,16 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 **Purpose**: Improvements that affect multiple user stories
 
 - [x] T140 [P] Create API documentation using Springdoc OpenAPI in all services generating /v3/api-docs endpoint
-- [ ] T141 [P] Add rate limiting to API Gateway using Redis-backed rate limiter in `services/api-gateway/src/main/java/com/chat4all/gateway/filter/RateLimitFilter.java`
-- [ ] T142 [P] Implement request/response logging filter in API Gateway at `services/api-gateway/src/main/java/com/chat4all/gateway/filter/LoggingFilter.java`
-- [ ] T143 [P] Create runbook in `docs/runbooks/message-delivery-failure.md` for troubleshooting failed deliveries
-- [ ] T144 [P] Create runbook in `docs/runbooks/scaling.md` for scaling services during traffic spikes
-- [ ] T145 [P] Create Architecture Decision Record (ADR) in `docs/adr/001-dual-database-architecture.md` documenting MongoDB vs PostgreSQL choice
-- [ ] T146 [P] Add performance tests with Gatling in `performance-tests/` simulating 10K concurrent conversations (SC-003)
-- [ ] T147 [P] Validate quickstart.md works end-to-end: docker-compose up → send message → verify delivery
-- [ ] T148 [P] Create security scanning workflow `.github/workflows/security.yml` using Snyk or Dependabot for dependency vulnerabilities
-- [ ] T149 [P] Implement secrets management using Kubernetes Secrets or HashiCorp Vault for connector credentials
-- [ ] T150 [P] Add correlation ID generation and propagation across all services in `shared/observability/src/main/java/com/chat4all/observability/correlation/CorrelationIdFilter.java`
+- [x] T141 [P] Add rate limiting to API Gateway using Redis-backed rate limiter in `services/api-gateway/src/main/java/com/chat4all/gateway/filter/RateLimitFilter.java`
+- [x] T142 [P] Implement request/response logging filter in API Gateway at `services/api-gateway/src/main/java/com/chat4all/gateway/filter/LoggingFilter.java`
+- [x] T143 [P] Create runbook in `docs/runbooks/message-delivery-failure.md` for troubleshooting failed deliveries
+- [x] T144 [P] Create runbook in `docs/runbooks/scaling.md` for scaling services during traffic spikes
+- [X] T145 [P] Create Architecture Decision Record (ADR) in `docs/adr/001-dual-database-architecture.md` documenting MongoDB vs PostgreSQL choice
+- [X] T146 [P] Add performance tests with K6 in `performance-tests/` simulating 10K concurrent conversations (SC-003)
+- [X] T147 [P] Validate quickstart.md works end-to-end: docker-compose up → send message → verify delivery
+- [X] T148 [P] Create security scanning workflow `.github/workflows/security.yml` using Snyk or Dependabot for dependency vulnerabilities
+- [X] T149 [P] Implement secrets management using Kubernetes Secrets or HashiCorp Vault for connector credentials
+- [X] T150 [P] Add correlation ID generation and propagation across all services in `shared/observability/src/main/java/com/chat4all/observability/correlation/CorrelationIdFilter.java`
 
 ---
 
