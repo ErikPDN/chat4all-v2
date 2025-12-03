@@ -305,7 +305,7 @@ Based on plan.md structure: Microservices architecture with services/, shared/, 
 - [X] T147 [P] Validate quickstart.md works end-to-end: docker-compose up → send message → verify delivery
 - [X] T148 [P] Create security scanning workflow `.github/workflows/security.yml` using Snyk or Dependabot for dependency vulnerabilities
 - [X] T149 [P] Implement secrets management using Kubernetes Secrets or HashiCorp Vault for connector credentials
-- [ ] T150 [P] Add correlation ID generation and propagation across all services in `shared/observability/src/main/java/com/chat4all/observability/correlation/CorrelationIdFilter.java`
+- [X] T150 [P] Add correlation ID generation and propagation across all services in `shared/observability/src/main/java/com/chat4all/observability/correlation/CorrelationIdFilter.java`
 
 ---
 
