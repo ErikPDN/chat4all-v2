@@ -454,6 +454,47 @@ k6 run scenarios/smoke-test.js
 
 ---
 
+## Validation Results (2025-12-03)
+
+**Test Execution**: `./test-phase11-validation.sh`
+
+### Comprehensive Testing: 13/13 PASSED ✅
+
+1. **Service Health Checks** (7/7 UP)
+   - API Gateway (8080), Message Service (8081), User Service (8083)
+   - File Service (8084), WhatsApp/Telegram/Instagram Connectors
+   
+2. **Correlation ID Propagation** (Working)
+   - Test UUID generated and sent to webhook
+   - Found 4 occurrences in API Gateway logs
+   - End-to-end tracing validated
+   
+3. **Rate Limiting** (100 success + 20 blocked)
+   - Sent 120 requests after 65s cooldown
+   - First 100 returned 200 OK
+   - Next 20 returned 429 Too Many Requests
+   - Redis key: `ratelimit:ip:172.18.0.1` = "240"
+   - **Validation Report**: `docs/RATE_LIMITING_VALIDATION.md`
+   
+4. **OpenAPI Documentation** (Available)
+   - API Gateway `/v3/api-docs` returns valid OpenAPI 3.0 spec
+   - Swagger UI available at `/swagger-ui.html` (302 redirect)
+   
+5. **Docker Compose Services** (16/16 Running)
+   - All containers healthy, 7+ hours uptime
+
+### Critical Discovery: Rate Limiting False Alarm
+
+Initial testing incorrectly flagged rate limiting as non-functional. Root cause analysis revealed:
+- OAuth2 security rejects unauthenticated requests BEFORE rate limiting executes (by design)
+- Actuator endpoints deliberately skip rate limiting (monitoring must be unrestricted)
+- Test corrected to use public webhook endpoint: `/api/webhooks/whatsapp`
+- Rate limiting validated working **exactly as designed**: 100 success + 20 blocked
+
+**See**: `docs/RATE_LIMITING_VALIDATION.md` for comprehensive analysis.
+
+---
+
 ## Known Issues / Limitations
 
 1. **Snyk Scan**: Requires `SNYK_TOKEN` secret (job skipped if not configured)
