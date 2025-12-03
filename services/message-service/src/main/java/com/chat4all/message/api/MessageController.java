@@ -6,6 +6,13 @@ import com.chat4all.message.domain.Message;
 import com.chat4all.message.service.MessageService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +42,7 @@ import java.time.Instant;
 @RestController
 @RequestMapping("/api/messages")
 @RequiredArgsConstructor
+@Tag(name = "Messages", description = "Message sending and status tracking endpoints")
 public class MessageController {
 
     private final MessageService messageService;
@@ -60,7 +68,32 @@ public class MessageController {
      * @return Mono<ResponseEntity<SendMessageResponse>> with HTTP 202 and message details
      */
     @PostMapping
-    public Mono<ResponseEntity<SendMessageResponse>> sendMessage(@Valid @RequestBody SendMessageRequest request) {
+    @Operation(
+        summary = "Send a new message",
+        description = "Accepts a message for asynchronous delivery to external platforms (WhatsApp, Telegram, Instagram). Returns HTTP 202 with message ID for status tracking."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "202",
+            description = "Message accepted for processing",
+            content = @Content(schema = @Schema(implementation = SendMessageResponse.class))
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request (missing required fields, invalid channel, content too long)"
+        ),
+        @ApiResponse(
+            responseCode = "409",
+            description = "Duplicate message (messageId already exists)"
+        ),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error"
+        )
+    })
+    public Mono<ResponseEntity<SendMessageResponse>> sendMessage(
+        @Parameter(description = "Message to send", required = true)
+        @Valid @RequestBody SendMessageRequest request) {
         log.info("Received message send request: conversationId={}, senderId={}, channel={}",
             request.getConversationId(), request.getSenderId(), request.getChannel());
 
