@@ -30,7 +30,7 @@ import java.util.UUID;
 @Service
 public class VerificationService {
     
-    private static final Logger log = LoggerFactory.getLogger(VerificationService.java);
+    private static final Logger log = LoggerFactory.getLogger(VerificationService.class);
     
     private final ExternalIdentityRepository identityRepository;
     private final AuditService auditService;
@@ -68,7 +68,9 @@ public class VerificationService {
         // Store token with expiration (implementation would add token field to ExternalIdentity)
         // For now, we'll log the action
         
-        auditService.logIdentityVerified(identityId, identity.getUserId(), "OTP");turn verificationToken;
+        auditService.logIdentityVerified(identityId, identity.getUser().getId(), "OTP");
+        
+        return verificationToken;
     }
     
     /**
@@ -98,7 +100,7 @@ public class VerificationService {
             identity.setVerified(true);
             identityRepository.save(identity);
             
-            auditService.logIdentityVerified(identityId, identity.getUserId(), "OTP");
+            auditService.logIdentityVerified(identityId, identity.getUser().getId(), "OTP");
             
             log.info("Verification completed successfully for identity {}", identityId);
         } else {
