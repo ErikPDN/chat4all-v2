@@ -2,6 +2,7 @@ package com.chat4all.gateway.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -36,11 +37,15 @@ import java.util.stream.Stream;
  * - channels:write - Configure channels
  * - admin - Full administrative access
  * 
+ * ⚠️ NOTE: This config is active ONLY when 'no-security' profile is NOT active.
+ * For performance testing without OAuth2, use: SPRING_PROFILES_ACTIVE=no-security
+ * 
  * @author Chat4All Team
  * @version 1.0.0
  */
 @Configuration
 @EnableWebFluxSecurity
+@Profile("!no-security")
 public class OAuth2Config {
 
     /**

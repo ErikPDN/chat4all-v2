@@ -298,6 +298,29 @@ S3_SECRET_KEY=minioadmin
 OTEL_EXPORTER_JAEGER_ENDPOINT=http://localhost:14250
 ```
 
+## Demonstração de Failover
+
+### Testes de Resiliência e Recuperação Automática
+
+Execute a demonstração funcional de failover para validar a recuperação automática do sistema:
+
+```bash
+# Executar demonstração completa de failover
+./run-failover-demonstration.sh
+
+# Visualizar relatório gerado
+cat logs/failover-tests/FAILOVER_DEMONSTRATION_*.md
+```
+
+**O que é testado**:
+- ✅ Recuperação automática do Message Service
+- ✅ Recuperação automática do Router Service  
+- ✅ Recuperação automática do Kafka
+- ✅ Zero message loss (preservação de dados)
+- ✅ Tempos de recuperação < 30 segundos
+
+**Documentação completa**: [docs/FAILOVER_DEMONSTRATION.md](docs/FAILOVER_DEMONSTRATION.md)
+
 ## Solução de Problemas
 
 ### Resetar Infraestrutura
@@ -336,6 +359,7 @@ Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICE
 - **Contratos de API**: [specs/001-unified-messaging-platform/contracts/](specs/001-unified-messaging-platform/contracts/)
 - **Guia de Início Rápido**: [specs/001-unified-messaging-platform/quickstart.md](specs/001-unified-messaging-platform/quickstart.md)
 - **Conclusão de Tarefas**: [docs/REMAINING_TASKS_COMPLETION.md](docs/REMAINING_TASKS_COMPLETION.md)
+- **Demonstração de Failover**: [docs/FAILOVER_DEMONSTRATION.md](docs/FAILOVER_DEMONSTRATION.md) ⭐ **NOVO**
 
 ## Suporte
 

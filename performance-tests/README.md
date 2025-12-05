@@ -52,7 +52,43 @@ k6 run scenarios/smoke-test.js
 
 ---
 
-### 2. Concurrent Conversations (Primary Test)
+### 2. Target 10,000 Requests/Minute (Throughput Test) ⭐
+**NEW**: Precise RPS control to meet performance SLA:
+```bash
+# Quick run from repo root
+./test-10k-rpm.sh
+
+# Custom configuration
+./test-10k-rpm.sh 10m 15000  # 10 minutes, 15K req/min
+
+# Or run directly with k6
+cd performance-tests
+k6 run scenarios/target-10k-rpm.js
+```
+
+**Performance Targets**:
+- **10,000 req/min** = 167 req/s sustained throughput
+- P95 API response: < 500ms
+- P99 API response: < 1000ms
+- Error rate: < 1%
+- Zero dropped requests
+
+**Executor**: `constant-arrival-rate` (maintains exact RPS regardless of response time)
+
+**Request Distribution**:
+- 50% POST /api/messages (send messages)
+- 30% GET /api/v1/conversations/{id}/messages (history)
+- 15% GET /actuator/health (health checks)
+- 5% POST /api/connectors/whatsapp/webhook (inbound)
+
+**When to use**: 
+- SLA validation (FR-012: <500ms P95)
+- Capacity planning
+- Production readiness testing
+
+---
+
+### 3. Concurrent Conversations (Load Test)
 Simulates 10,000 concurrent users with realistic behavior:
 ```bash
 # Default: 10K users, 5 minutes
@@ -86,7 +122,7 @@ k6 run scenarios/concurrent-conversations.js \
 
 ---
 
-### 3. Spike Test (Resilience)
+### 4. Spike Test (Resilience)
 Tests system behavior under sudden traffic surge:
 ```bash
 k6 run scenarios/spike-test.js

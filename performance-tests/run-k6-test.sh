@@ -69,6 +69,10 @@ case "$TEST_TYPE" in
         SCRIPT="scenarios/concurrent-conversations.js"
         log_info "Running load test (${VUS} users, ${DURATION})..."
         ;;
+    10k|10000|rpm)
+        SCRIPT="scenarios/target-10k-rpm.js"
+        log_info "Running 10,000 req/min throughput test..."
+        ;;
     spike|sp)
         SCRIPT="scenarios/spike-test.js"
         log_info "Running spike test..."
@@ -78,7 +82,8 @@ case "$TEST_TYPE" in
         echo ""
         echo "Available tests:"
         echo "  smoke (s)      - Quick validation (10 users, 1 min)"
-        echo "  load (l)       - 10K concurrent conversations [DEFAULT]"
+        echo "  load (l)       - 10K concurrent conversations"
+        echo "  10k (rpm)      - 10,000 requests/minute throughput test"
         echo "  spike (sp)     - Sudden traffic surge test"
         exit 1
         ;;

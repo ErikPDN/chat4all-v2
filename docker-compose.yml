@@ -176,7 +176,7 @@ services:
       - "8080:8080"
     environment:
       SERVER_PORT: 8080
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: dev,no-security  # ⚠️ Security disabled for performance testing
       SPRING_CLOUD_GATEWAY_ROUTES_0_ID: message-service
       SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://message-service:8081
       SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: Path=/api/messages/**,/api/conversations/**,/api/webhooks/**

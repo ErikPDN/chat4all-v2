@@ -5,6 +5,7 @@ import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -28,6 +29,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * 
  * Uses Redis for distributed rate limiting across multiple gateway instances.
  * Falls back to local bucket if Redis is unavailable.
+ * 
+ * ⚠️ NOTE: Rate limiting is DISABLED when 'no-security' profile is active (for performance testing).
  */
 @Component
 public class RateLimitFilter implements GlobalFilter, Ordered {
@@ -38,6 +41,10 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
     private static final int USER_RATE_LIMIT = 100; // requests per minute
     private static final int GLOBAL_RATE_LIMIT = 1000; // requests per minute
     private static final int BURST_CAPACITY = 200; // max burst
+    
+    // Check if rate limiting is disabled (for performance testing)
+    @Value("${spring.profiles.active:}")
+    private String activeProfiles;
     
     // Local bucket cache (fallback when Redis unavailable)
     private final Map<String, Bucket> localBuckets = new ConcurrentHashMap<>();
@@ -57,6 +64,12 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
     
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        // Skip rate limiting if 'no-security' profile is active (for performance testing)
+        if (activeProfiles != null && activeProfiles.contains("no-security")) {
+            log.debug("Rate limiting DISABLED (no-security profile active)");
+            return chain.filter(exchange);
+        }
+        
         String path = exchange.getRequest().getPath().value();
         
         // Skip rate limiting for actuator endpoints
