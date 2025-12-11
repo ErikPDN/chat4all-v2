@@ -1,0 +1,437 @@
+{
+  "realm": "chat4all",
+  "enabled": true,
+  "displayName": "Chat4All - Unified Messaging Platform",
+  "displayNameHtml": "<b>Chat4All v2</b> - Unified Messaging Platform",
+  "notBefore": 0,
+  "revokeRefreshToken": false,
+  "refreshTokenMaxReuse": 0,
+  "accessTokenLifespan": 3600,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "ssoSessionIdleTimeoutRememberMe": 604800,
+  "ssoSessionMaxLifespanRememberMe": 604800,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespanEnabled": false,
+  "offlineSessionMaxLifespan": 5184000,
+  "clientSessionIdleTimeout": 0,
+  "clientSessionMaxLifespan": 0,
+  "clientOfflineSessionIdleTimeout": 0,
+  "clientOfflineSessionMaxLifespan": 0,
+  "defaultRole": {
+    "name": "default-roles-chat4all",
+    "description": "${role_default-roles}",
+    "composite": true,
+    "clientRole": false,
+    "containerId": "chat4all"
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Administrator role",
+        "composite": false
+      },
+      {
+        "name": "user",
+        "description": "Standard user role",
+        "composite": false
+      },
+      {
+        "name": "moderator",
+        "description": "Moderator role",
+        "composite": false
+      },
+      {
+        "name": "support",
+        "description": "Support staff role",
+        "composite": false
+      }
+    ],
+    "client": {
+      "chat4all-backend": [
+        {
+          "name": "message-read",
+          "description": "Can read messages",
+          "composite": false
+        },
+        {
+          "name": "message-write",
+          "description": "Can send messages",
+          "composite": false
+        },
+        {
+          "name": "user-manage",
+          "description": "Can manage users",
+          "composite": false
+        },
+        {
+          "name": "file-upload",
+          "description": "Can upload files",
+          "composite": false
+        },
+        {
+          "name": "conversation-manage",
+          "description": "Can manage conversations",
+          "composite": false
+        }
+      ],
+      "chat4all-frontend": [
+        {
+          "name": "profile-read",
+          "description": "Can read own profile",
+          "composite": false
+        },
+        {
+          "name": "profile-write",
+          "description": "Can update own profile",
+          "composite": false
+        }
+      ]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "chat4all-backend",
+      "name": "Chat4All Backend Services",
+      "description": "Service account for backend microservices",
+      "enabled": true,
+      "clientAuthenticationType": "client-secret-basic",
+      "secret": "KevwrFRawxHqjOjgLZHXRPvOWVFvDQXW",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "consentRequired": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "saml.assertion.signature": "false",
+        "saml.multivalued.roles": "false",
+        "saml.encrypt": "false",
+        "saml.server.signature": "false",
+        "saml.server.signature.keyinfo.ext": "false",
+        "saml.artifact.binding": "false",
+        "exclude.session.state.from.auth.response": "false"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "bearerOnly": false,
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "name": "Client ID",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientId",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientId",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "Client IP Address",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.session.note": "clientAddress",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "clientAddress",
+            "jsonType.label": "String"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "access": {
+        "view": true,
+        "configure": true,
+        "manage": true
+      }
+    },
+    {
+      "clientId": "chat4all-frontend",
+      "name": "Chat4All Frontend",
+      "description": "Web application frontend",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "consentRequired": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "rootUrl": "http://localhost:3000",
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "validRedirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "bearerOnly": false,
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "protocolMappers": [
+        {
+          "name": "audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "chat4all-backend",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "role",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access"
+      ],
+      "access": {
+        "view": true,
+        "configure": true,
+        "manage": true
+      }
+    },
+    {
+      "clientId": "api-gateway",
+      "name": "API Gateway",
+      "description": "Spring Cloud Gateway OAuth2 client",
+      "enabled": true,
+      "clientAuthenticationType": "client-secret-basic",
+      "secret": "QmVGVXJyOFd4akc5ekJzTDJHSFRVMzBk",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "consentRequired": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "rootUrl": "http://localhost:8080",
+      "redirectUris": [
+        "http://localhost:8080/login/oauth2/code/keycloak",
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8080"
+      ],
+      "validRedirectUris": [
+        "http://localhost:8080/*"
+      ],
+      "bearerOnly": false,
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "email",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "email": "admin@chat4all.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "account": [
+          "manage-account",
+          "manage-account-links",
+          "view-profile"
+        ]
+      },
+      "realmRoles": [
+        "admin",
+        "user",
+        "default-roles-chat4all"
+      ]
+    },
+    {
+      "username": "testuser",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "User",
+      "email": "testuser@chat4all.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "account": [
+          "manage-account",
+          "view-profile"
+        ]
+      },
+      "realmRoles": [
+        "user",
+        "default-roles-chat4all"
+      ]
+    },
+    {
+      "username": "moderator",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Moderator",
+      "lastName": "User",
+      "email": "moderator@chat4all.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mod123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "account": [
+          "manage-account",
+          "view-profile"
+        ]
+      },
+      "realmRoles": [
+        "user",
+        "moderator",
+        "default-roles-chat4all"
+      ]
+    },
+    {
+      "username": "support-agent",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Support",
+      "lastName": "Agent",
+      "email": "support@chat4all.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "support123",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "account": [
+          "manage-account",
+          "view-profile"
+        ]
+      },
+      "realmRoles": [
+        "user",
+        "support",
+        "default-roles-chat4all"
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "name": "Administrators",
+      "path": "/administrators",
+      "realmRoles": [
+        "admin"
+      ]
+    },
+    {
+      "name": "Support Team",
+      "path": "/support-team",
+      "realmRoles": [
+        "support"
+      ]
+    },
+    {
+      "name": "Standard Users",
+      "path": "/standard-users",
+      "realmRoles": [
+        "user"
+      ]
+    }
+  ],
+  "scopeMappings": [],
+  "clientScopeMappings": {
+    "chat4all-backend": [
+      {
+        "client": "chat4all-frontend",
+        "roles": [
+          "message-read",
+          "message-write",
+          "conversation-manage",
+          "file-upload",
+          "user-manage"
+        ]
+      }
+    ]
+  },
+  "defaultRoles": [
+    "default-roles-chat4all"
+  ],
+  "requiredActions": [],
+  "passwordPolicy": "length(8) and specialChars(1) and upperCase(1) and digits(1)",
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyInitialCounter": 0,
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
+  "otpSupportedApplications": [
+    "FreeOTP",
+    "Google Authenticator"
+  ]
+}
