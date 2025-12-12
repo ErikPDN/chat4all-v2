@@ -97,32 +97,11 @@ db.createCollection('messages', {
 
 print('Creating indexes for messages collection...');
 
-// Unique index on message_id (FR-002: unique message IDs)
-db.messages.createIndex({ message_id: 1 }, { unique: true, name: 'idx_message_id_unique' });
+// NOTE: The following indexes are created programmatically by Spring Data MongoDB
+// in the MongoIndexConfig class to avoid conflicts between snake_case (MongoDB naming)
+// and camelCase (Java class field names). Removing manual index creation here.
 
-// Compound index for conversation history queries (sorted by timestamp descending)
-db.messages.createIndex(
-  { conversation_id: 1, timestamp: -1 },
-  { name: 'idx_conversation_history' }
-);
-
-// Index for sender-based queries
-db.messages.createIndex(
-  { sender_id: 1, timestamp: -1 },
-  { name: 'idx_sender_messages' }
-);
-
-// Index for status monitoring and retry queries
-db.messages.createIndex(
-  { status: 1, updated_at: 1 },
-  { name: 'idx_status_updated' }
-);
-
-// Sparse index on platform_message_id for webhook lookups
-db.messages.createIndex(
-  { 'metadata.platform_message_id': 1 },
-  { sparse: true, name: 'idx_platform_message_id' }
-);
+// Index creation: See services/message-service/src/main/java/com/chat4all/message/config/MongoIndexConfig.java
 
 print('Messages collection created successfully');
 
@@ -210,26 +189,15 @@ db.createCollection('conversations', {
 
 print('Creating indexes for conversations collection...');
 
-// Unique index on conversation_id
-db.conversations.createIndex({ conversation_id: 1 }, { unique: true, name: 'idx_conversation_id_unique' });
+// NOTE: Indexes are created by Spring Data MongoDB using @Indexed annotations
+// in the Conversation.java class. Skipping duplicate index creation here to avoid conflicts.
+// Spring Data MongoDB will create:
+// - Unique index on conversationId
+// - Compound index for user recent conversations
+// - Index for filtering by primaryChannel and archived status
+// - Index for recent conversations (dashboard view)
 
-// Compound index for user conversations sorted by recent activity
-db.conversations.createIndex(
-  { 'participants.user_id': 1, last_message_at: -1 },
-  { name: 'idx_user_recent_conversations' }
-);
-
-// Index for filtering by channel and archived status
-db.conversations.createIndex(
-  { primary_channel: 1, archived: 1 },
-  { name: 'idx_channel_archived' }
-);
-
-// Index for recent conversations (dashboard view)
-db.conversations.createIndex(
-  { last_message_at: -1 },
-  { name: 'idx_last_message_at' }
-);
+print('Conversation indexes will be created by Spring Data MongoDB via @Indexed annotations');
 
 print('Conversations collection created successfully');
 

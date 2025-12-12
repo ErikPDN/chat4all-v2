@@ -12,14 +12,13 @@ spring:
   data:
     mongodb:
       # Autenticação com credenciais do docker-compose.yml
-      uri: mongodb://chat4all:chat4all_dev_password@host.docker.internal:27017/chat4all?authSource=admin
+      uri: mongodb://chat4all:chat4all_dev_password@localhost:27017/chat4all?authSource=admin
       database: chat4all
       auto-index-creation: true
 
 # S3/MinIO Configuration
 s3:
   endpoint: ${S3_ENDPOINT:http://minio:9000}
-  public-endpoint: ${S3_PUBLIC_ENDPOINT:http://localhost:9000}
   access-key: ${S3_ACCESS_KEY:minioadmin}
   secret-key: ${S3_SECRET_KEY:minioadmin}
   region: ${S3_REGION:us-east-1}

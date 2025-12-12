@@ -61,7 +61,6 @@ services:
       MONGO_INITDB_DATABASE: chat4all
     volumes:
       - mongodb-data:/data/db
-      - ./infrastructure/mongodb/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
