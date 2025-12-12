@@ -28,7 +28,7 @@
         <kafka.version>3.6.0</kafka.version>
 
         <!-- Databases -->
-        <postgresql.version>42.7.1</postgresql.version>
+        <postgresql.version>42.7.8</postgresql.version>
 
         <!-- Resilience & Circuit Breaker -->
         <resilience4j.version>2.1.0</resilience4j.version>
