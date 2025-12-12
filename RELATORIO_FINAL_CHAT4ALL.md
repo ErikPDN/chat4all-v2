@@ -4,7 +4,7 @@
 
 ---
 
-**Disciplina**: Arquitetura de Software  
+**Disciplina**: Sistemas Distribuídos 
 **Entrega**: 3 - Sistema Completo com Escalabilidade e Resiliência  
 **Data**: 05 de Dezembro de 2025  
 **Repositório**: https://github.com/ErikPDN/chat4all-v2  
