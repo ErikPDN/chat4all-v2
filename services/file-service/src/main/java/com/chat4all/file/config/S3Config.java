@@ -40,6 +40,9 @@ public class S3Config {
     @Value("${s3.endpoint:http://localhost:9000}")
     private String endpoint;
 
+    @Value("${s3.public-endpoint:http://localhost:9000}")
+    private String publicEndpoint;
+
     @Value("${s3.access-key:minioadmin}")
     private String accessKey;
 
@@ -101,13 +104,13 @@ public class S3Config {
      */
     @Bean
     public S3Presigner s3Presigner() {
-        log.info("Initializing S3 presigner with endpoint: {}, region: {}, bucket: {}", 
-            endpoint, region, bucketName);
+        log.info("Initializing S3 presigner with public endpoint: {}, region: {}, bucket: {}", 
+            publicEndpoint, region, bucketName);
 
         AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
 
         return S3Presigner.builder()
-            .endpointOverride(URI.create(endpoint))
+            .endpointOverride(URI.create(publicEndpoint))
             .region(Region.of(region))
             .credentialsProvider(StaticCredentialsProvider.create(credentials))
             // Force path-style URLs (http://localhost:9000/bucket/key)
