@@ -41,9 +41,9 @@
         <aws-sdk.version>2.21.0</aws-sdk.version>
 
         <!-- Testing -->
-        <junit.version>5.10.1</junit.version>
-        <mockito.version>5.7.0</mockito.version>
-        <testcontainers.version>1.19.3</testcontainers.version>
+        <junit.version>6.0.1</junit.version>
+        <mockito.version>5.21.0</mockito.version>
+        <testcontainers.version>2.0.2</testcontainers.version>
         <rest-assured.version>5.4.0</rest-assured.version>
 
         <!-- Plugins -->
