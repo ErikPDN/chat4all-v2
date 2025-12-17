@@ -25,7 +25,7 @@
         <spring-cloud.version>2024.0.0</spring-cloud.version>
 
         <!-- Messaging & Streaming -->
-        <kafka.version>3.6.0</kafka.version>
+        <kafka.version>4.1.1</kafka.version>
 
         <!-- Databases -->
         <postgresql.version>42.7.1</postgresql.version>
